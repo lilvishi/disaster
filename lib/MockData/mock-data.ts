@@ -308,3 +308,63 @@ export const volunteerLocations: VolunteerLocation[] = [
     type: "volunteer",
   },
 ]
+
+export const safeModeData = {
+  // Top banner text
+  volunteerRegion: "Los Angeles",
+
+  // Secondary card: nearest disaster by distance to polygon centroid
+  nearestDisaster: {
+    type: "WILDFIRE",
+    areaName: "Griffith Park area",
+    riskLevel: "moderate" as const, // "low" | "moderate" | "high"
+    distanceMiles: 6.8,
+    lastUpdated: "12 min ago",
+    shortDescription:
+      "Smoke reported near the north ridge. Avoid trails, keep windows closed if you have respiratory sensitivity.",
+  },
+
+  // Volunteer call-to-action list (1–3 for MVP)
+  volunteerOpportunities: [
+    {
+      id: "vol-1",
+      title: "Supply sorting at West LA Warehouse",
+      locationText: "West LA",
+      timingText: "Today, 2–6 PM",
+    },
+    {
+      id: "vol-2",
+      title: "Sandbag filling – Elysian Valley",
+      locationText: "Frogtown / Elysian Valley",
+      timingText: "Tomorrow, 9 AM–1 PM",
+    },
+    {
+      id: "vol-3",
+      title: "Meal packing – Hollywood Community Kitchen",
+      locationText: "Hollywood",
+      timingText: "This weekend",
+    },
+  ],
+}
+
+export const dangerZones = [
+  {
+    id: "griffith-wildfire",
+    // Simple polygon near Griffith-ish (placeholder)
+    polygon: [
+      [34.1365, -118.305],
+      [34.132, -118.28],
+      [34.12, -118.27],
+      [34.115, -118.295],
+    ],
+  },
+  {
+    id: "la-river-flood",
+    polygon: [
+      [34.092, -118.255],
+      [34.09, -118.235],
+      [34.075, -118.23],
+      [34.072, -118.252],
+    ],
+  },
+] as const
