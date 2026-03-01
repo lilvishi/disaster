@@ -82,13 +82,21 @@ function CommunityFeed() {
 
   // helper: send a message to service worker to show notification
   const triggerNotification = (title: string, body: string) => {
-    if ('serviceWorker' in navigator && 'controller' in navigator) {
-      navigator.serviceWorker.controller?.postMessage({
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
         type: 'SHOW_NOTIFICATION',
         title,
         body,
         icon: '/icons/icon-192.jpg',
       })
+    } else {
+      // Fallback: show notification directly if service worker not available
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, {
+          body,
+          icon: '/icons/icon-192.jpg',
+        })
+      }
     }
   }
 
@@ -201,7 +209,7 @@ function CommunityFeed() {
       // delay 10 seconds then show notification via service worker
       setTimeout(() => {
         triggerNotification("Fire near your area", "An urgent update was posted to your community.")
-      }, 10000)
+      }, 1000)
     }
     setNewPostContent("")
     setMediaType(null)
@@ -266,14 +274,21 @@ function CommunityFeed() {
     const registerSW = async () => {
       try {
         if ('serviceWorker' in navigator) {
-          await navigator.serviceWorker.register('/sw.js')
+          const reg = await navigator.serviceWorker.register('/sw.js')
+          console.log('Service Worker registered:', reg)
+          
+          // Wait for service worker to be ready
+          await navigator.serviceWorker.ready
+          console.log('Service Worker is ready')
+          
           // request notification permission when service worker registers
-          if (Notification.permission === 'default') {
-            await Notification.requestPermission()
+          if ('Notification' in window && Notification.permission === 'default') {
+            const perm = await Notification.requestPermission()
+            console.log('Notification permission:', perm)
           }
         }
       } catch (e) {
-        // ignore errors
+        console.error('Failed to register service worker:', e)
       }
     }
     void registerSW()
