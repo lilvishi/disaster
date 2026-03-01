@@ -1,3 +1,5 @@
+import UCLAFire from "./ucla-fire.jpg"
+import { StaticImageData } from "next/image"
 export interface CrisisData {
   disasterType: string
   riskLevel: "critical" | "high" | "moderate" | "low"
@@ -44,10 +46,19 @@ export interface CommunityPost {
   content: string
   timestamp: string
   type: "image" | "video" | "text" | "help-needed"
-  media?: string
-  likes: number
+  media?: StaticImageData
+  // vote counts instead of simple likes
+  upvotes: number
+  downvotes: number
   replies: number
   verified: boolean
+  userVote?: "up" | "down" | null
+  // how many times community has flagged for misinformation
+  reportCount?: number
+  // comments that have been added locally
+  comments?: { id: string;
+              author: string;
+              content: string }[]
 }
 
 export interface VolunteerLocation {
@@ -75,11 +86,11 @@ export const crisisData: CrisisData = {
   steps: [
     {
       title: "Gather Essentials",
-      description: "Medications, documents, water, phone charger, pet supplies",
+      description: "Pack medications, documents, water, phone charger, pet supplies and other important items you can’t live without",
     },
     {
       title: "Plan Your Route",
-      description: "Use designated evacuation routes. Avoid Canyon Rd and Mulholland Dr.",
+      description: "Check sites/apps like Google Maps or official evacuation maps for the best route",
     },
     {
       title: "Check On Neighbors",
@@ -87,7 +98,7 @@ export const crisisData: CrisisData = {
     },
     {
       title: "Register at Shelter",
-      description: "Check in at Lincoln High School or Pacific Community Center.",
+      description: "Look up nearby shelters using local news or government websites before heading in",
     },
   ],
 }
@@ -188,9 +199,13 @@ export const communityPosts: CommunityPost[] = [
     content: "Just evacuated from Zone 3. Roads are clear on Pacific Coast Highway heading south. Stay safe everyone.",
     timestamp: "8 min ago",
     type: "text",
-    likes: 47,
-    replies: 12,
+    upvotes: 47,
+    downvotes: 0,
+    replies: 0,
     verified: true,
+    userVote: null,
+    reportCount: 0,
+    comments: [],
   },
   {
     id: "2",
@@ -199,20 +214,29 @@ export const communityPosts: CommunityPost[] = [
     content: "Lincoln High shelter has water but running low on blankets. If anyone can bring extras, please do.",
     timestamp: "22 min ago",
     type: "help-needed",
-    likes: 89,
-    replies: 23,
+    upvotes: 89,
+    downvotes: 0,
+    replies: 0,
     verified: true,
+    userVote: null,
+    reportCount: 0,
+    comments: [],
   },
   {
     id: "3",
     author: "Sarah Johnson",
     avatar: "SJ",
-    content: "View from Griffith Observatory - the fire line is visible from here. Praying for our firefighters.",
+    content: "You can see the fires from UCLA.",
     timestamp: "45 min ago",
     type: "image",
-    likes: 234,
-    replies: 56,
+    media: UCLAFire,
+    upvotes: 234,
+    downvotes: 0,
+    replies: 0,
     verified: false,
+    userVote: null,
+    reportCount: 0,
+    comments: [],
   },
   {
     id: "4",
@@ -221,9 +245,13 @@ export const communityPosts: CommunityPost[] = [
     content: "Free rides available for elderly residents needing evacuation from Brentwood area. Call 555-0142.",
     timestamp: "1 hour ago",
     type: "help-needed",
-    likes: 312,
-    replies: 45,
+    upvotes: 312,
+    downvotes: 0,
+    replies: 0,
     verified: true,
+    userVote: null,
+    reportCount: 0,
+    comments: [],
   },
   {
     id: "5",
@@ -232,9 +260,13 @@ export const communityPosts: CommunityPost[] = [
     content: "Pet-friendly shelter confirmed at Venice Beach Rec Center. They have kennels and pet food available.",
     timestamp: "2 hours ago",
     type: "text",
-    likes: 178,
-    replies: 31,
+    upvotes: 178,
+    downvotes: 0,
+    replies: 0,
     verified: true,
+    userVote: null,
+    reportCount: 0,
+    comments: [],
   },
 ]
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Search, ShieldCheck, CloudLightning, Newspaper, Siren, Clock, ExternalLink, Wind, Droplets, Thermometer, TriangleAlert } from "lucide-react"
-import { newsItems, weatherData } from "@/lib/mock-data"
+import { newsItems, weatherData } from "@/lib/MockData/mock-data"
 import { cn } from "@/lib/utils"
 
 type CategoryFilter = "all" | "government" | "weather" | "news" | "emergency"

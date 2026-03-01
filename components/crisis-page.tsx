@@ -1,7 +1,8 @@
 "use client"
 
-import { AlertTriangle, Flame, MapPin, Clock, ChevronRight, ShieldAlert, ArrowUpRight } from "lucide-react"
-import { crisisData } from "@/lib/mock-data"
+import { useState } from "react"
+import { AlertTriangle, Flame, MapPin, Clock, ShieldAlert, ArrowUpRight, ChevronDown, ChevronUp } from "lucide-react"
+import { crisisData } from "@/lib/MockData/mock-data"
 import { cn } from "@/lib/utils"
 
 const riskColors = {
@@ -16,6 +17,39 @@ const evacColors = {
   advisory: { bg: "bg-primary", text: "text-primary-foreground", label: "EVACUATION ADVISORY" },
   "shelter-in-place": { bg: "bg-warning", text: "text-warning-foreground", label: "SHELTER IN PLACE" },
   none: { bg: "bg-success", text: "text-success-foreground", label: "NO EVACUATION" },
+}
+
+
+interface Step {
+  title: string
+  description: string
+}
+
+function StepItem({ step }: { step: Step }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((o: boolean) => !o)}
+        className="w-full flex items-center gap-3 rounded-lg bg-secondary/50 p-3 min-h-[3rem] text-left transition-colors hover:bg-secondary/80"
+      >
+        <div className="flex h-3 w-3 shrink-0 items-center justify-center rounded-full bg-primary/20 mt-0.5">
+          <span className="h-2 w-2 rounded-full bg-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground">{step.title}</p>
+        </div>
+        {open ? (
+          <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+        )}
+      </button>
+      {open && (
+        <p className="text-xs text-muted-foreground mt-1 px-3">{step.description}</p>
+      )}
+    </div>
+  )
 }
 
 export function CrisisPage() {
@@ -77,9 +111,12 @@ export function CrisisPage() {
         </div>
         <div className="flex flex-col gap-2">
           {data.immediateActions.map((action, i) => (
-            <div key={i} className="flex items-start gap-3 rounded-lg bg-secondary/50 p-3">
+            <div
+              key={i}
+              className="flex items-start gap-3 rounded-lg bg-secondary/50 p-3 min-h-[3rem]"
+            >
               <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 mt-0.5">
-                <span className="text-[10px] font-bold text-primary">{i + 1}</span>
+                <span className="h-2 w-2 rounded-full bg-primary" />
               </div>
               <p className="text-sm text-foreground leading-relaxed">{action}</p>
             </div>
@@ -92,19 +129,7 @@ export function CrisisPage() {
         <h3 className="text-sm font-bold text-foreground font-mono mb-3">Steps & Advice</h3>
         <div className="flex flex-col gap-2">
           {data.steps.map((step, i) => (
-            <button
-              key={i}
-              className="flex items-center gap-3 rounded-lg bg-secondary/50 p-3 text-left transition-colors hover:bg-secondary/80"
-            >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                <span className="text-xs font-bold text-primary">{String(i + 1).padStart(2, "0")}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground">{step.title}</p>
-                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{step.description}</p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-            </button>
+            <StepItem key={i} step={step} />
           ))}
         </div>
       </div>
