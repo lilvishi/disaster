@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { ShieldCheck, MapPin, ArrowUpRight, ChevronRight, HeartHandshake, Flame, Waves, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { safeModeData } from "@/lib/mock-data"
+import { safeModeData } from "@/lib/MockData/mock-data"
 
 const riskColors = {
   high: { bg: "bg-primary/15", text: "text-primary", border: "border-primary/30", label: "HIGH" },
