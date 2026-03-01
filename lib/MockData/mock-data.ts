@@ -416,6 +416,41 @@ export const volunteerLocations: VolunteerLocation[] = [
   },
 ]
 
+export const safeModeData = {
+  volunteerRegion: "Los Angeles",
+  nearestDisaster: {
+    type: "WILDFIRE",
+    areaName: "Griffith Park area",
+    riskLevel: "moderate" as const,
+    distanceMiles: 6.8,
+    lastUpdated: "12 min ago",
+    shortDescription:
+      "Smoke reported near the north ridge. Avoid trails, keep windows closed if you have respiratory sensitivity.",
+  },
+  volunteerOpportunities: [
+    {
+      id: "vol-1",
+      title: "Supply sorting at West LA Warehouse",
+      locationText: "West LA",
+      timingText: "Today, 2–6 PM",
+    },
+    {
+      id: "vol-2",
+      title: "Sandbag filling – Elysian Valley",
+      locationText: "Frogtown / Elysian Valley",
+      timingText: "Tomorrow, 9 AM–1 PM",
+    },
+    {
+      id: "vol-3",
+      title: "Meal packing – Hollywood Community Kitchen",
+      locationText: "Hollywood",
+      timingText: "This weekend",
+    },
+  ],
+}
+
+
+
 // Danger zone boundaries as GeoJSON polygons
 export interface DangerZone {
   id: string

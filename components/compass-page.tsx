@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Flame, Home, HandHeart, UtensilsCrossed, AlertCircle, Ban, MapPin, Filter, Layers, X, Megaphone, Send } from "lucide-react"
-import { mapMarkers, type MapMarker, dangerZones } from "@/lib/mock-data"
+import { mapMarkers, type MapMarker, dangerZones } from "@/lib/MockData/mock-data"
 import { cn } from "@/lib/utils"
 import { createPortal } from "react-dom"
 
@@ -24,6 +24,25 @@ const filterOptions = [
   { type: "road-closed" as const, label: "Road Closures", color: "#6b7280" },
 ]
 
+function getIconPath(type: MapMarker["type"]): string {
+  switch (type) {
+    case "danger":
+      return '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>'
+    case "shelter":
+      return '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'
+    case "volunteer":
+      return '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>'
+    case "food-bank":
+      return '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'
+    case "report":
+      return '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'
+    case "road-closed":
+      return '<circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>'
+    default:
+      return '<circle cx="12" cy="12" r="10"/>'
+  }
+}
+
 type ReportType = "danger" | "shelter" | "food-bank" | "report" | "volunteer" | "road-closed"
 
 interface FormData {
@@ -32,7 +51,7 @@ interface FormData {
   [key: string]: string | number | string[]
 }
 
-export function CompassPage() {
+export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" | "shelter" }) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null) // store Leaflet map instance
   const leafletRef = useRef<any>(null) // store Leaflet namespace (L)
@@ -247,7 +266,7 @@ export function CompassPage() {
       setTimeout(() => map.invalidateSize(), 100)
     }
 
-    init()
+    loadMap()
 
     return () => {
       if (mapInstanceRef.current) {

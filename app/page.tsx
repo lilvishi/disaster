@@ -8,7 +8,7 @@ import { SafeModePage } from "@/components/safe-page"
 import { CompassPage } from "@/components/compass-page"
 import { CommsPage } from "@/components/comms-page"
 import { CommunityPage } from "@/components/community-page"
-import { dangerZones } from "@/lib/mock-data"
+import { dangerZones } from "@/lib/MockData/mock-data"
 
 type LocationStatus = "loading" | "denied" | "ready"
 
