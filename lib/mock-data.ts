@@ -45,9 +45,18 @@ export interface CommunityPost {
   timestamp: string
   type: "image" | "video" | "text" | "help-needed"
   media?: string
-  likes: number
+  // vote counts instead of simple likes
+  upvotes: number
+  downvotes: number
   replies: number
   verified: boolean
+  userVote?: "up" | "down" | null
+  // how many times community has flagged for misinformation
+  reportCount?: number
+  // comments that have been added locally
+  comments?: { id: string;
+              author: string;
+              content: string }[]
 }
 
 export interface VolunteerLocation {
@@ -188,9 +197,13 @@ export const communityPosts: CommunityPost[] = [
     content: "Just evacuated from Zone 3. Roads are clear on Pacific Coast Highway heading south. Stay safe everyone.",
     timestamp: "8 min ago",
     type: "text",
-    likes: 47,
-    replies: 12,
+    upvotes: 47,
+    downvotes: 0,
+    replies: 0,
     verified: true,
+    userVote: null,
+    reportCount: 0,
+    comments: [],
   },
   {
     id: "2",
@@ -199,9 +212,13 @@ export const communityPosts: CommunityPost[] = [
     content: "Lincoln High shelter has water but running low on blankets. If anyone can bring extras, please do.",
     timestamp: "22 min ago",
     type: "help-needed",
-    likes: 89,
-    replies: 23,
+    upvotes: 89,
+    downvotes: 0,
+    replies: 0,
     verified: true,
+    userVote: null,
+    reportCount: 0,
+    comments: [],
   },
   {
     id: "3",
@@ -210,9 +227,13 @@ export const communityPosts: CommunityPost[] = [
     content: "View from Griffith Observatory - the fire line is visible from here. Praying for our firefighters.",
     timestamp: "45 min ago",
     type: "image",
-    likes: 234,
-    replies: 56,
+    upvotes: 234,
+    downvotes: 0,
+    replies: 0,
     verified: false,
+    userVote: null,
+    reportCount: 0,
+    comments: [],
   },
   {
     id: "4",
@@ -221,9 +242,13 @@ export const communityPosts: CommunityPost[] = [
     content: "Free rides available for elderly residents needing evacuation from Brentwood area. Call 555-0142.",
     timestamp: "1 hour ago",
     type: "help-needed",
-    likes: 312,
-    replies: 45,
+    upvotes: 312,
+    downvotes: 0,
+    replies: 0,
     verified: true,
+    userVote: null,
+    reportCount: 0,
+    comments: [],
   },
   {
     id: "5",
@@ -232,9 +257,13 @@ export const communityPosts: CommunityPost[] = [
     content: "Pet-friendly shelter confirmed at Venice Beach Rec Center. They have kennels and pet food available.",
     timestamp: "2 hours ago",
     type: "text",
-    likes: 178,
-    replies: 31,
+    upvotes: 178,
+    downvotes: 0,
+    replies: 0,
     verified: true,
+    userVote: null,
+    reportCount: 0,
+    comments: [],
   },
 ]
 

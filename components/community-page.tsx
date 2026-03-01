@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Heart, MessageCircle, ShieldCheck, HandHeart, Gift, HeartHandshake, MapPin, Users, ChevronRight, Send, AlertCircle } from "lucide-react"
+import { MessageCircle, ShieldCheck, HandHeart, Gift, HeartHandshake, MapPin, Users, ChevronRight, Send, AlertCircle, Trash, ArrowUp, ArrowDown, Flag } from "lucide-react"
 import { communityPosts, volunteerLocations } from "@/lib/mock-data"
 import { cn } from "@/lib/utils"
 
@@ -50,6 +50,157 @@ export function CommunityPage() {
 }
 
 function CommunityFeed() {
+  // type for post augmented with vote counts
+  type PostWithVotes = (typeof communityPosts)[number] & {
+    upvotes: number
+    downvotes: number
+    userVote: "up" | "down" | null
+    reportCount: number
+    userReported: boolean
+  }
+
+  // keep posts in state so we can mutate comments locally
+  const [posts, setPosts] = useState<PostWithVotes[]>(
+    communityPosts.map(p => ({
+      ...p,
+      upvotes: (p as any).upvotes ?? (p as any).likes ?? 0,
+      downvotes: 0,
+      userVote: null,
+      reportCount: (p as any).reportCount ?? 0,
+      userReported: false,
+    }))
+  )
+
+  // track composer input
+  const [newPostContent, setNewPostContent] = useState("")
+
+  const [commentInputs, setCommentInputs] = useState<Record<string, string>>({})
+
+  const handleInputChange = (postId: string, value: string) => {
+    setCommentInputs(prev => ({ ...prev, [postId]: value }))
+  }
+
+  const addComment = (postId: string) => {
+    const text = commentInputs[postId]?.trim()
+    if (!text) return
+    setPosts(prev =>
+      prev.map(p => {
+        if (p.id !== postId) return p
+        const newComment = {
+          id: Date.now().toString(),
+          author: "You",
+          content: text,
+        }
+        return {
+          ...p,
+          comments: [...(p.comments ?? []), newComment],
+          replies: (p.replies ?? 0) + 1,
+        }
+      })
+    )
+    setCommentInputs(prev => ({ ...prev, [postId]: "" }))
+  }
+
+  const deleteComment = (postId: string, commentId: string) => {
+    setPosts(prev =>
+      prev.map(p => {
+        if (p.id !== postId) return p
+        const newComments = (p.comments ?? []).filter(c => c.id !== commentId)
+        return {
+          ...p,
+          comments: newComments,
+          replies: Math.max(0, (p.replies ?? 0) - 1),
+        }
+      })
+    )
+  }
+
+  const addPost = () => {
+    const text = newPostContent.trim()
+    if (!text) return
+    const newPost: PostWithVotes = {
+      id: Date.now().toString(),
+      author: "You",
+      avatar: "You",
+      content: text,
+      timestamp: "Just now",
+      type: "text" as const,
+      upvotes: 0,
+      downvotes: 0,
+      replies: 0,
+      verified: false,
+      userVote: null,
+      comments: [] as any[],
+      reportCount: 0,
+      userReported: false,
+    }
+    setPosts(prev => [newPost, ...prev])
+    setNewPostContent("")
+  }
+
+  const toggleReport = (postId: string) => {
+    setPosts(prev =>
+      prev.map(p => {
+        if (p.id !== postId) return p
+        if (p.userReported) {
+          return { ...p, userReported: false, reportCount: Math.max(0, p.reportCount - 1) }
+        }
+        return { ...p, userReported: true, reportCount: p.reportCount + 1 }
+      })
+    )
+  }
+
+  const deletePost = (postId: string) => {
+    setPosts(prev => prev.filter(p => p.id !== postId))
+  }
+
+  const handleUpvote = (postId: string) => {
+    setPosts(prev =>
+      prev.map(p => {
+        if (p.id !== postId) return p
+        const up = p.upvotes ?? 0
+        const down = p.downvotes ?? 0
+        if (p.userVote === "up") {
+          return { ...p, upvotes: up - 1, userVote: null }
+        }
+        if (p.userVote === "down") {
+          return { ...p, upvotes: up + 1, downvotes: Math.max(0, down - 1), userVote: "up" }
+        }
+        return { ...p, upvotes: up + 1, userVote: "up" }
+      })
+    )
+  }
+
+  const handleDownvote = (postId: string) => {
+    setPosts(prev =>
+      prev.map(p => {
+        if (p.id !== postId) return p
+        const up = p.upvotes ?? 0
+        const down = p.downvotes ?? 0
+        if (p.userVote === "down") {
+          return { ...p, downvotes: down - 1, userVote: null }
+        }
+        if (p.userVote === "up") {
+          return { ...p, downvotes: down + 1, upvotes: Math.max(0, up - 1), userVote: "down" }
+        }
+        return { ...p, downvotes: down + 1, userVote: "down" }
+      })
+    )
+  }
+
+  // sorting mode state
+  const [sortMode, setSortMode] = useState<"recent" | "top">("recent")
+
+  // derive sorted posts based on mode
+  const sortedPosts =
+    sortMode === "recent"
+      ? posts
+      : [...posts].sort((a, b) => {
+          const scoreA = (a.upvotes ?? 0) - (a.downvotes ?? 0)
+          const scoreB = (b.upvotes ?? 0) - (b.downvotes ?? 0)
+          return scoreB - scoreA
+        })
+
   return (
     <div className="flex flex-col gap-3">
       {/* Post Composer */}
@@ -58,17 +209,55 @@ function CommunityFeed() {
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15">
             <span className="text-xs font-bold text-primary">You</span>
           </div>
-          <div className="flex-1 rounded-lg bg-secondary/50 px-3 py-2.5">
-            <span className="text-xs text-muted-foreground">Share an update with your community...</span>
-          </div>
-          <button className="rounded-lg bg-primary px-3 py-2 transition-colors hover:bg-primary/90">
+          <textarea
+            value={newPostContent}
+            onChange={(e) => setNewPostContent(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault()
+                addPost()
+              }
+            }}
+            className="flex-1 rounded-lg bg-secondary/50 px-3 py-2.5 text-xs resize-none"
+            placeholder="Share an update with your community..."
+          />
+          <button
+            onClick={addPost}
+            className="rounded-lg bg-primary px-3 py-2 transition-colors hover:bg-primary/90"
+          >
             <Send className="h-4 w-4 text-primary-foreground" />
           </button>
         </div>
       </div>
 
+      {/* Sorting */}
+      <div className="flex gap-2 text-xs">
+        <button
+          onClick={() => setSortMode("recent")}
+          className={cn(
+            "rounded-lg px-3 py-1",
+            sortMode === "recent"
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Most Recent
+        </button>
+        <button
+          onClick={() => setSortMode("top")}
+          className={cn(
+            "rounded-lg px-3 py-1",
+            sortMode === "top"
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Most Upvotes
+        </button>
+      </div>
+
       {/* Posts */}
-      {communityPosts.map((post) => (
+      {sortedPosts.map((post) => (
         <article key={post.id} className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-start gap-3">
             <div className={cn(
@@ -91,6 +280,14 @@ function CommunityFeed() {
               </div>
               <span className="text-[10px] text-muted-foreground">{post.timestamp}</span>
             </div>
+            {post.author === "You" && (
+              <button
+                onClick={() => deletePost(post.id)}
+                className="ml-auto text-red-500 text-xs"
+              >
+                Delete
+              </button>
+            )}
           </div>
 
           <p className="text-sm text-foreground leading-relaxed mt-3">{post.content}</p>
@@ -102,13 +299,84 @@ function CommunityFeed() {
           )}
 
           <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border">
-            <button className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors">
-              <Heart className="h-4 w-4" />
-              <span className="text-xs">{post.likes}</span>
+            <button
+              onClick={() => handleUpvote(post.id)}
+              className={cn(
+                "flex items-center gap-1.5 transition-colors",
+                post.userVote === "up"
+                  ? "text-green-500"
+                  : "text-muted-foreground hover:text-primary"
+              )}
+            >
+              <ArrowUp className="h-4 w-4" />
+              <span className="text-xs">{post.upvotes}</span>
+            </button>
+            <button
+              onClick={() => handleDownvote(post.id)}
+              className={cn(
+                "flex items-center gap-1.5 transition-colors",
+                post.userVote === "down"
+                  ? "text-red-500"
+                  : "text-muted-foreground hover:text-destructive"
+              )}
+            >
+              <ArrowDown className="h-4 w-4" />
+              <span className="text-xs">{post.downvotes}</span>
             </button>
             <button className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
               <MessageCircle className="h-4 w-4" />
               <span className="text-xs">{post.replies}</span>
+            </button>
+            <button
+              onClick={() => toggleReport(post.id)}
+              className={cn(
+                "flex items-center gap-1.5 transition-colors",
+                post.userReported ? "text-yellow-500" : "text-muted-foreground hover:text-yellow-600"
+              )}
+            >
+              <Flag className="h-4 w-4" />
+              <span className="text-xs">{post.reportCount}</span>
+            </button>
+          </div>
+
+          {/* comments list */}
+          {post.comments && post.comments.length > 0 && (
+            <div className="mt-2 space-y-2">
+              {post.comments.map((c) => (
+                <div key={c.id} className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>
+                    <strong>{c.author}:</strong> {c.content}
+                  </span>
+                  <button
+                    onClick={() => deleteComment(post.id, c.id)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* new comment input */}
+          <div className="mt-2 flex items-center gap-2">
+            <input
+              value={commentInputs[post.id] || ""}
+              onChange={(e) => handleInputChange(post.id, e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  addComment(post.id)
+                }
+              }}
+              className="flex-1 rounded-md border px-2 py-1 text-xs"
+              placeholder="Write a comment..."
+            />
+            <button
+              onClick={() => addComment(post.id)}
+              className="text-primary text-xs font-medium"
+            >
+              Post
             </button>
           </div>
         </article>
