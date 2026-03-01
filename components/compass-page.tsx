@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Flame, Home, HandHeart, UtensilsCrossed, AlertCircle, Ban, MapPin, Filter, Layers, X } from "lucide-react"
-import { mapMarkers, type MapMarker } from "@/lib/mock-data"
+import { mapMarkers, type MapMarker } from "@/lib/MockData/mock-data"
 import { cn } from "@/lib/utils"
 
 const markerConfig: Record<MapMarker["type"], { color: string; icon: typeof Flame; label: string }> = {

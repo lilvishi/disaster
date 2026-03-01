@@ -1,3 +1,5 @@
+import UCLAFire from "./ucla-fire.jpg"
+import { StaticImageData } from "next/image"
 export interface CrisisData {
   disasterType: string
   riskLevel: "critical" | "high" | "moderate" | "low"
@@ -44,7 +46,7 @@ export interface CommunityPost {
   content: string
   timestamp: string
   type: "image" | "video" | "text" | "help-needed"
-  media?: string
+  media?: StaticImageData
   // vote counts instead of simple likes
   upvotes: number
   downvotes: number
@@ -84,11 +86,11 @@ export const crisisData: CrisisData = {
   steps: [
     {
       title: "Gather Essentials",
-      description: "Medications, documents, water, phone charger, pet supplies",
+      description: "Pack medications, documents, water, phone charger, pet supplies and other important items you can’t live without",
     },
     {
       title: "Plan Your Route",
-      description: "Use designated evacuation routes. Avoid Canyon Rd and Mulholland Dr.",
+      description: "Check sites/apps like Google Maps or official evacuation maps for the best route",
     },
     {
       title: "Check On Neighbors",
@@ -96,7 +98,7 @@ export const crisisData: CrisisData = {
     },
     {
       title: "Register at Shelter",
-      description: "Check in at Lincoln High School or Pacific Community Center.",
+      description: "Look up nearby shelters using local news or government websites before heading in",
     },
   ],
 }
@@ -224,9 +226,10 @@ export const communityPosts: CommunityPost[] = [
     id: "3",
     author: "Sarah Johnson",
     avatar: "SJ",
-    content: "View from Griffith Observatory - the fire line is visible from here. Praying for our firefighters.",
+    content: "You can see the fires from UCLA.",
     timestamp: "45 min ago",
     type: "image",
+    media: UCLAFire,
     upvotes: 234,
     downvotes: 0,
     replies: 0,

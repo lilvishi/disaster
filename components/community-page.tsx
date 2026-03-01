@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { MessageCircle, ShieldCheck, HandHeart, Gift, HeartHandshake, MapPin, Users, ChevronRight, Send, AlertCircle, Trash, ArrowUp, ArrowDown, Flag } from "lucide-react"
-import { communityPosts, volunteerLocations } from "@/lib/mock-data"
+import Image from "next/image"
+import { MessageCircle, ShieldCheck, HandHeart, Gift, HeartHandshake, MapPin, Users, ChevronRight, Send, AlertCircle, Trash, ArrowUp, ArrowDown, Flag, Image as ImageIcon, Video } from "lucide-react"
+import { communityPosts, volunteerLocations } from "@/lib/MockData/mock-data"
 import { cn } from "@/lib/utils"
 
 type ViewMode = "feed" | "help"
@@ -57,6 +58,7 @@ function CommunityFeed() {
     userVote: "up" | "down" | null
     reportCount: number
     userReported: boolean
+    mediaPreview?: string
   }
 
   // keep posts in state so we can mutate comments locally
@@ -73,8 +75,27 @@ function CommunityFeed() {
 
   // track composer input
   const [newPostContent, setNewPostContent] = useState("")
+  const [mediaType, setMediaType] = useState<"photo" | "video" | null>(null)
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null)
 
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({})
+
+  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>, type: "photo" | "video") => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        setMediaPreview(event.target?.result as string)
+        setMediaType(type)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const clearMedia = () => {
+    setMediaType(null)
+    setMediaPreview(null)
+  }
 
   const handleInputChange = (postId: string, value: string) => {
     setCommentInputs(prev => ({ ...prev, [postId]: value }))
@@ -124,7 +145,7 @@ function CommunityFeed() {
       avatar: "You",
       content: text,
       timestamp: "Just now",
-      type: "text" as const,
+      type: mediaType === "photo" ? "image" : mediaType === "video" ? "video" : ("text" as const),
       upvotes: 0,
       downvotes: 0,
       replies: 0,
@@ -133,9 +154,12 @@ function CommunityFeed() {
       comments: [] as any[],
       reportCount: 0,
       userReported: false,
+      mediaPreview: mediaPreview || undefined,
     }
     setPosts(prev => [newPost, ...prev])
     setNewPostContent("")
+    setMediaType(null)
+    setMediaPreview(null)
   }
 
   const toggleReport = (postId: string) => {
@@ -228,6 +252,58 @@ function CommunityFeed() {
             <Send className="h-4 w-4 text-primary-foreground" />
           </button>
         </div>
+        {/* Media preview and upload buttons */}
+        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+          <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground transition-colors text-xs">
+            <ImageIcon className="h-4 w-4" />
+            <span>Photo</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => handleMediaUpload(e, "photo")}
+              className="hidden"
+            />
+          </label>
+          <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground transition-colors text-xs">
+            <Video className="h-4 w-4" />
+            <span>Video</span>
+            <input
+              type="file"
+              accept="video/*"
+              onChange={(e) => handleMediaUpload(e, "video")}
+              className="hidden"
+            />
+          </label>
+          {mediaPreview && (
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-xs text-primary">{mediaType === "photo" ? "📷" : "🎥"} {mediaType}</span>
+              <button
+                onClick={clearMedia}
+                className="text-xs text-red-500 hover:text-red-700"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
+        {/* Media preview */}
+        {mediaPreview && (
+          <div className="mt-3 rounded-lg overflow-hidden border border-border">
+            {mediaType === "photo" ? (
+              <img
+                src={mediaPreview}
+                alt="preview"
+                className="w-full h-auto max-h-40 object-cover"
+              />
+            ) : (
+              <video
+                src={mediaPreview}
+                className="w-full h-auto max-h-40 object-cover"
+                controls
+              />
+            )}
+          </div>
+        )}
       </div>
 
       {/* Sorting */}
@@ -292,9 +368,22 @@ function CommunityFeed() {
 
           <p className="text-sm text-foreground leading-relaxed mt-3">{post.content}</p>
 
-          {post.type === "image" && (
-            <div className="mt-3 rounded-lg bg-secondary/50 h-40 flex items-center justify-center border border-border">
-              <span className="text-xs text-muted-foreground">[ Community Photo ]</span>
+          {(post.type === "image" || post.type === "video") && (
+            <div className="mt-3 rounded-lg overflow-hidden border border-border bg-secondary/50">
+              {post.mediaPreview ? (
+                post.type === "image" ? (
+                  <img src={post.mediaPreview} alt="post media" className="w-full h-auto max-h-128 object-cover" />
+                ) : (
+                  <video src={post.mediaPreview} controls className="w-full h-auto max-h-64 object-cover" />
+                )
+              ) : post.media ? (
+                <Image src={post.media} alt="post media" className="w-full h-auto max-h-128 object-cover" />
+              ) : (
+                <div className="h-40 flex items-center justify-center">
+                  <span className="text-xs text-muted-foreground">[ {post.type === "image" ? "Photo" : "Video"} ]
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
