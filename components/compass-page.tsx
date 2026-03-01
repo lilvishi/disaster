@@ -6,7 +6,7 @@ import { mapMarkers, type MapMarker } from "@/lib/MockData/mock-data"
 import { cn } from "@/lib/utils"
 
 const markerConfig: Record<MapMarker["type"], { color: string; icon: typeof Flame; label: string }> = {
-  danger: { color: "#ef4444", icon: Flame, label: "Danger Zone" },
+  danger: { color: "#085c24", icon: Flame, label: "Danger Zone" },
   shelter: { color: "#3b82f6", icon: Home, label: "Shelter" },
   volunteer: { color: "#a855f7", icon: HandHeart, label: "Volunteer" },
   "food-bank": { color: "#22c55e", icon: UtensilsCrossed, label: "Food Bank" },

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { MessageCircle, ShieldCheck, HandHeart, Gift, HeartHandshake, MapPin, Users, ChevronRight, Send, AlertCircle, Trash, ArrowUp, ArrowDown, Flag, Image as ImageIcon, Video } from "lucide-react"
 import { communityPosts, volunteerLocations } from "@/lib/MockData/mock-data"
@@ -80,6 +80,18 @@ function CommunityFeed() {
 
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({})
 
+  // helper: send a message to service worker to show notification
+  const triggerNotification = (title: string, body: string) => {
+    if ('serviceWorker' in navigator && 'controller' in navigator) {
+      navigator.serviceWorker.controller?.postMessage({
+        type: 'SHOW_NOTIFICATION',
+        title,
+        body,
+        icon: '/icons/icon-192.jpg',
+      })
+    }
+  }
+
   const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>, type: "photo" | "video") => {
     const file = e.target.files?.[0]
     if (file) {
@@ -136,6 +148,32 @@ function CommunityFeed() {
     )
   }
 
+  // helper: request permission (if needed) and show a notification
+  const notifyForUpdate = async () => {
+    try {
+      if (typeof window === "undefined" || !("Notification" in window)) return
+      if (Notification.permission === "granted") {
+        new Notification("Fire near your area", {
+          body: "An urgent update was posted to your community.",
+          icon: "/icons/icon-192.jpg",
+        })
+        return
+      }
+      if (Notification.permission !== "denied") {
+        const perm = await Notification.requestPermission()
+        if (perm === "granted") {
+          new Notification("Fire near your area", {
+            body: "An urgent update was posted to your community.",
+            icon: "/icons/icon-192.jpg",
+          })
+        }
+      }
+    } catch (e) {
+      // ignore notification errors in unsupported environments
+      // console.warn(e)
+    }
+  }
+
   const addPost = () => {
     const text = newPostContent.trim()
     if (!text) return
@@ -157,6 +195,14 @@ function CommunityFeed() {
       mediaPreview: mediaPreview || undefined,
     }
     setPosts(prev => [newPost, ...prev])
+
+    // trigger notification when the post text equals exactly "update"
+    if (text.toLowerCase() === "update") {
+      // delay 10 seconds then show notification via service worker
+      setTimeout(() => {
+        triggerNotification("Fire near your area", "An urgent update was posted to your community.")
+      }, 10000)
+    }
     setNewPostContent("")
     setMediaType(null)
     setMediaPreview(null)
@@ -214,6 +260,24 @@ function CommunityFeed() {
 
   // sorting mode state
   const [sortMode, setSortMode] = useState<"recent" | "top">("recent")
+
+  // register service worker (one-time)
+  useEffect(() => {
+    const registerSW = async () => {
+      try {
+        if ('serviceWorker' in navigator) {
+          await navigator.serviceWorker.register('/sw.js')
+          // request notification permission when service worker registers
+          if (Notification.permission === 'default') {
+            await Notification.requestPermission()
+          }
+        }
+      } catch (e) {
+        // ignore errors
+      }
+    }
+    void registerSW()
+  }, [])
 
   // derive sorted posts based on mode
   const sortedPosts =
@@ -330,6 +394,32 @@ function CommunityFeed() {
         >
           Most Upvotes
         </button>
+        <button
+          onClick={() => triggerNotification("Fire near your area", "An urgent update was posted to your community.")}
+          className={cn(
+            "rounded-lg px-3 py-1 text-xs",
+            "bg-card text-foreground shadow-sm"
+          )}
+        >
+          Test Push
+        </button>
+        {/* <button
+          onClick={async () => {
+            try {
+              await fetch('/api/send-push', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: 'Test: Fire near your area', body: 'This is a test push message.' }),
+              })
+              alert('Test push requested (server will attempt to send to saved subscriptions)')
+            } catch (e) {
+              alert('Failed to request test push')
+            }
+          }}
+          className={cn("rounded-lg px-3 py-1 text-xs", pushSubscribed ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground')}
+        >
+          Send Test Push
+        </button> */}
       </div>
 
       {/* Posts */}
