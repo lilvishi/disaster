@@ -12,9 +12,9 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabId>("crisis")
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
+    <div className="flex h-dvh flex-col bg-background">
       <AppHeader />
-      <main className="flex-1">
+      <main className="flex-1 min-h-0 overflow-hidden">
         {activeTab === "crisis" && <CrisisPage />}
         {activeTab === "compass" && <CompassPage />}
         {activeTab === "comms" && <CommsPage />}

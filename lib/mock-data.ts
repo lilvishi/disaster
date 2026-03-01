@@ -16,6 +16,27 @@ export interface MapMarker {
   label: string
   details?: string
   status?: string
+  // Danger Zone fields
+  acres?: number
+  containmentPercent?: number
+  rainfallInches?: number
+  dangerLevel?: "active-threat" | "incoming" | "contained"
+  // Shelter & Food Bank fields
+  currentCapacity?: number
+  maxCapacity?: number
+  foodCondition?: "stable" | "shortage" | "critical"
+  contactInfo?: string
+  safetyReports?: string[]
+  // Crowd Report fields
+  reportComment?: string
+  isVerified?: boolean
+  verificationCount?: number
+  reportCount?: number
+  reportCategory?: "hazard" | "help" | "resource"
+  // Volunteer fields
+  volunteerNeeds?: string[]
+  // Shared
+  userReportId?: boolean // Indicates if this is a user-submitted report
 }
 
 export interface NewsItem {
@@ -102,14 +123,100 @@ export const crisisData: CrisisData = {
 }
 
 export const mapMarkers: MapMarker[] = [
-  { id: "1", lat: 34.0522, lng: -118.2637, type: "danger", label: "Active Fire Zone", details: "3,200 acres, 20% contained", status: "Active" },
-  { id: "2", lat: 34.0622, lng: -118.2837, type: "danger", label: "Fire Spread Zone", details: "Expected to reach area by 6PM", status: "Warning" },
-  { id: "3", lat: 34.0422, lng: -118.2437, type: "shelter", label: "Lincoln High School", details: "Capacity: 500 | Current: 312", status: "Open" },
-  { id: "4", lat: 34.0322, lng: -118.2837, type: "shelter", label: "Pacific Community Center", details: "Capacity: 300 | Current: 289", status: "Near Full" },
-  { id: "5", lat: 34.0722, lng: -118.2537, type: "food-bank", label: "Red Cross Food Station", details: "Hot meals available", status: "Active" },
-  { id: "6", lat: 34.0622, lng: -118.2337, type: "volunteer", label: "Volunteer Rally Point", details: "Need: drivers, translators", status: "Active" },
-  { id: "7", lat: 34.0522, lng: -118.3037, type: "road-closed", label: "Canyon Rd Closed", details: "Fire damage, no access" },
-  { id: "8", lat: 34.0472, lng: -118.2737, type: "report", label: "Supply Shortage Report", details: "Water bottles running low at shelter", status: "Unverified" },
+  {
+    id: "1",
+    lat: 34.0522,
+    lng: -118.2637,
+    type: "danger",
+    label: "Active Fire Zone",
+    status: "Active",
+    dangerLevel: "active-threat",
+    acres: 3200,
+    containmentPercent: 20,
+    details: "3,200 acres, 20% contained",
+  },
+  {
+    id: "2",
+    lat: 34.0622,
+    lng: -118.2837,
+    type: "danger",
+    label: "Fire Spread Zone",
+    status: "Warning",
+    dangerLevel: "incoming",
+    acres: 1500,
+    containmentPercent: 0,
+    details: "Expected to reach area by 6PM",
+  },
+  {
+    id: "3",
+    lat: 34.0422,
+    lng: -118.2437,
+    type: "shelter",
+    label: "Lincoln High School",
+    status: "Open",
+    currentCapacity: 312,
+    maxCapacity: 500,
+    foodCondition: "stable",
+    contactInfo: "555-0142",
+    safetyReports: ["meow", "meow"],
+  },
+  {
+    id: "4",
+    lat: 34.0322,
+    lng: -118.2837,
+    type: "shelter",
+    label: "Pacific Community Center",
+    status: "Near Full",
+    currentCapacity: 289,
+    maxCapacity: 300,
+    foodCondition: "shortage",
+    contactInfo: "555-0143",
+    safetyReports: ["meow"],
+  },
+  {
+    id: "5",
+    lat: 34.0722,
+    lng: -118.2537,
+    type: "food-bank",
+    label: "Red Cross Food Station",
+    status: "Active",
+    currentCapacity: 100,
+    maxCapacity: 150,
+    foodCondition: "stable",
+    contactInfo: "555-0144",
+    safetyReports: ["meow"],
+  },
+  {
+    id: "6",
+    lat: 34.0622,
+    lng: -118.2337,
+    type: "volunteer",
+    label: "Volunteer Rally Point",
+    status: "Active",
+    volunteerNeeds: ["drivers", "translators", "meow"],
+  },
+  {
+    id: "7",
+    lat: 34.0522,
+    lng: -118.3037,
+    type: "road-closed",
+    label: "Canyon Rd Closed",
+    details: "Fire damage, no access",
+  },
+  {
+    id: "8",
+    lat: 34.0472,
+    lng: -118.2737,
+    type: "report",
+    label: "Supply Shortage Report",
+    status: "Unverified",
+    reportComment: "Water bottles running low at shelter",
+    isVerified: false,
+    verificationCount: 0,
+    reportCount: 0,
+    reportCategory: "help",
+    userReportId: true,
+  },
 ]
 
 export const newsItems: NewsItem[] = [
@@ -305,3 +412,58 @@ export const volunteerLocations: VolunteerLocation[] = [
     type: "volunteer",
   },
 ]
+
+// Danger zone boundaries as GeoJSON polygons
+export interface DangerZone {
+  id: string
+  name: string
+  type: "fire" | "flood" | "storm"
+  color: string
+  polygon: [number, number][] // [lat, lng] pairs
+  dangerLevel: "active-threat" | "incoming" | "contained"
+  acres: number
+  containmentPercent: number
+}
+
+export const dangerZones: DangerZone[] = [
+  {
+    id: "dz-1",
+    name: "Active Fire Zone",
+    type: "fire",
+    color: "#ef4444",
+    dangerLevel: "active-threat",
+    acres: 3200,
+    containmentPercent: 20,
+    polygon: [
+      [34.0522, -118.2637],
+      [34.0620, -118.2637],
+      [34.0620, -118.2540],
+      [34.0522, -118.2540],
+      [34.0522, -118.2637],
+    ],
+  },
+  {
+    id: "dz-2",
+    name: "Fire Spread Zone",
+    type: "fire",
+    color: "#f59e0b",
+    dangerLevel: "incoming",
+    acres: 1500,
+    containmentPercent: 0,
+    polygon: [
+      [34.0622, -118.2837],
+      [34.0750, -118.2837],
+      [34.0750, -118.2700],
+      [34.0622, -118.2700],
+      [34.0622, -118.2837],
+    ],
+  },
+]
+
+// For tracking user-submitted reports in localStorage
+export interface VerificationState {
+  reportId: string
+  isVerified: boolean
+  verificationCount: number
+  reportCount: number
+}
