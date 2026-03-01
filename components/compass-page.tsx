@@ -1,9 +1,11 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Flame, Home, HandHeart, UtensilsCrossed, AlertCircle, Ban, MapPin, Filter, Layers, X } from "lucide-react"
 import { mapMarkers, type MapMarker } from "@/lib/mock-data"
 import { cn } from "@/lib/utils"
+
+const ALL_TYPES: MapMarker["type"][] = ["danger", "shelter", "volunteer", "food-bank", "report", "road-closed"]
 
 const markerConfig: Record<MapMarker["type"], { color: string; icon: typeof Flame; label: string }> = {
   danger: { color: "#ef4444", icon: Flame, label: "Danger Zone" },
@@ -23,32 +25,68 @@ const filterOptions = [
   { type: "road-closed" as const, label: "Road Closures", color: "#6b7280" },
 ]
 
-export function CompassPage() {
+type LeafletNS = typeof import("leaflet")
+
+function getIconPath(type: MapMarker["type"]): string {
+  switch (type) {
+    case "danger":
+      return '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>'
+    case "shelter":
+      return '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'
+    case "volunteer":
+      return '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>'
+    case "food-bank":
+      return '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'
+    case "report":
+      return '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'
+    case "road-closed":
+      return '<circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>'
+    default:
+      return '<circle cx="12" cy="12" r="10"/>'
+  }
+}
+
+export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" | "shelter" }) {
+  const initialFilters = useMemo(() => {
+    if (preset === "volunteer") return new Set<MapMarker["type"]>(["volunteer"])
+    if (preset === "shelter") return new Set<MapMarker["type"]>(["shelter"])
+    return new Set<MapMarker["type"]>(ALL_TYPES)
+  }, [preset])
+
   const mapRef = useRef<HTMLDivElement>(null)
-  const mapInstanceRef = useRef<L.Map | null>(null)
+  const leafletRef = useRef<LeafletNS | null>(null)
+  const mapInstanceRef = useRef<import("leaflet").Map | null>(null)
+  const markerLayerRef = useRef<import("leaflet").LayerGroup | null>(null)
+  const userMarkerRef = useRef<import("leaflet").Marker | null>(null)
+
   const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null)
-  const [activeFilters, setActiveFilters] = useState<Set<MapMarker["type"]>>(new Set(["danger", "shelter", "volunteer", "food-bank", "report", "road-closed"]))
+  const [activeFilters, setActiveFilters] = useState<Set<MapMarker["type"]>>(initialFilters)
   const [showFilters, setShowFilters] = useState(false)
-  const [mapReady, setMapReady] = useState(false)
+  const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "granted" | "denied">("idle")
+
+  // apply preset when switching into Compass tab
+  useEffect(() => {
+    setActiveFilters(new Set(initialFilters))
+    setSelectedMarker(null)
+  }, [initialFilters])
 
   const toggleFilter = (type: MapMarker["type"]) => {
     setActiveFilters((prev) => {
       const next = new Set(prev)
-      if (next.has(type)) {
-        next.delete(type)
-      } else {
-        next.add(type)
-      }
+      if (next.has(type)) next.delete(type)
+      else next.add(type)
       return next
     })
   }
 
+  // 1) init map once
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return
 
-    const loadMap = async () => {
+    const init = async () => {
       const L = await import("leaflet")
       await import("leaflet/dist/leaflet.css")
+      leafletRef.current = L
 
       const map = L.map(mapRef.current!, {
         center: [34.0522, -118.2637],
@@ -61,7 +99,7 @@ export function CompassPage() {
         maxZoom: 19,
       }).addTo(map)
 
-      // Add danger zones as circles
+      // MVP danger zones as circles (replace with polygons later)
       L.circle([34.0522, -118.2637], {
         color: "#ef4444",
         fillColor: "#ef4444",
@@ -79,38 +117,90 @@ export function CompassPage() {
         dashArray: "8 4",
       }).addTo(map)
 
-      // Add markers
-      mapMarkers.forEach((marker) => {
-        const config = markerConfig[marker.type]
-        const icon = L.divIcon({
-          className: "custom-marker",
-          html: `<div style="background:${config.color};width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,0.9);box-shadow:0 2px 8px rgba(0,0,0,0.2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${getIconPath(marker.type)}</svg></div>`,
-          iconSize: [28, 28],
-          iconAnchor: [14, 14],
-        })
-
-        L.marker([marker.lat, marker.lng], { icon })
-          .addTo(map)
-          .on("click", () => {
-            setSelectedMarker(marker)
-          })
-      })
-
+      markerLayerRef.current = L.layerGroup().addTo(map)
       mapInstanceRef.current = map
-      setMapReady(true)
     }
 
-    loadMap()
+    init()
 
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove()
         mapInstanceRef.current = null
       }
+      markerLayerRef.current = null
+      userMarkerRef.current = null
+      leafletRef.current = null
     }
   }, [])
 
-  const filteredMarkers = mapMarkers.filter((m) => activeFilters.has(m.type))
+  // 2) request location once map exists
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    const L = leafletRef.current
+    if (!map || !L) return
+    if (locationStatus !== "idle") return
+
+    setLocationStatus("loading")
+
+    if (!navigator.geolocation) {
+      setLocationStatus("denied")
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude
+        const lng = pos.coords.longitude
+
+        setLocationStatus("granted")
+        map.setView([lat, lng], 14)
+
+        if (userMarkerRef.current) {
+          userMarkerRef.current.setLatLng([lat, lng])
+        } else {
+          const icon = L.divIcon({
+            className: "user-marker",
+            html: `<div style="width:14px;height:14px;border-radius:999px;background:#3b82f6;border:3px solid rgba(255,255,255,0.95);box-shadow:0 2px 10px rgba(0,0,0,0.25)"></div>`,
+            iconSize: [14, 14],
+            iconAnchor: [7, 7],
+          })
+          userMarkerRef.current = L.marker([lat, lng], { icon }).addTo(map)
+        }
+      },
+      () => setLocationStatus("denied"),
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
+  }, [locationStatus])
+
+  // 3) render markers when filters change
+  useEffect(() => {
+    const L = leafletRef.current
+    const layer = markerLayerRef.current
+    if (!L || !layer) return
+
+    layer.clearLayers()
+
+    mapMarkers
+      .filter((m) => activeFilters.has(m.type))
+      .forEach((marker) => {
+        const config = markerConfig[marker.type]
+        const icon = L.divIcon({
+          className: "custom-marker",
+          html: `<div style="background:${config.color};width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,0.9);box-shadow:0 2px 8px rgba(0,0,0,0.2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${getIconPath(
+            marker.type
+          )}</svg></div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+        })
+
+        L.marker([marker.lat, marker.lng], { icon })
+          .addTo(layer)
+          .on("click", () => setSelectedMarker(marker))
+      })
+  }, [activeFilters])
+
+  const filteredMarkers = useMemo(() => mapMarkers.filter((m) => activeFilters.has(m.type)), [activeFilters])
 
   return (
     <div className="relative flex flex-col h-[calc(100dvh-7.5rem)]">
@@ -132,6 +222,13 @@ export function CompassPage() {
         <span className="text-xs text-muted-foreground">{filteredMarkers.length} locations</span>
       </div>
 
+      {/* Location status */}
+      {locationStatus === "denied" && (
+        <div className="absolute top-14 left-3 z-[1000] rounded-lg bg-card/95 backdrop-blur-md border border-border px-3 py-2 shadow-lg">
+          <p className="text-xs text-muted-foreground">Location denied — showing default LA view</p>
+        </div>
+      )}
+
       {/* Filter Panel */}
       {showFilters && (
         <div className="absolute top-14 right-3 z-[1000] rounded-xl bg-card/95 backdrop-blur-md border border-border p-3 shadow-xl w-52">
@@ -141,6 +238,7 @@ export function CompassPage() {
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
+
           <div className="flex flex-col gap-1.5">
             {filterOptions.map((f) => (
               <button
@@ -175,16 +273,15 @@ export function CompassPage() {
                 <p className="text-xs text-muted-foreground mt-0.5">{markerConfig[selectedMarker.type].label}</p>
               </div>
             </div>
-            <button
-              onClick={() => setSelectedMarker(null)}
-              className="text-muted-foreground hover:text-foreground"
-            >
+            <button onClick={() => setSelectedMarker(null)} className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
             </button>
           </div>
+
           {selectedMarker.details && (
             <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border">{selectedMarker.details}</p>
           )}
+
           {selectedMarker.status && (
             <div className="mt-2 flex items-center gap-1.5">
               <div
@@ -205,23 +302,4 @@ export function CompassPage() {
       )}
     </div>
   )
-}
-
-function getIconPath(type: MapMarker["type"]): string {
-  switch (type) {
-    case "danger":
-      return '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>'
-    case "shelter":
-      return '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'
-    case "volunteer":
-      return '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>'
-    case "food-bank":
-      return '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'
-    case "report":
-      return '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'
-    case "road-closed":
-      return '<circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>'
-    default:
-      return '<circle cx="12" cy="12" r="10"/>'
-  }
 }
