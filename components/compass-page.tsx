@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Flame, Home, HandHeart, UtensilsCrossed, AlertCircle, Ban, MapPin, Filter, Layers, X, Megaphone, Send, ChevronUp, ChevronDown } from "lucide-react"
 import { mapMarkers, type MapMarker, dangerZones } from "@/lib/MockData/mock-data"
+import { getTrackedCoverageRings } from "@/lib/tracking"
 import { cn } from "@/lib/utils"
 import { createPortal } from "react-dom"
 
@@ -125,6 +126,7 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
   const leafletRef = useRef<any>(null) // store Leaflet namespace (L)
   const markersRef = useRef<any[]>([])
   const polygonsRef = useRef<any[]>([])
+  const untrackedMaskRef = useRef<any>(null)
   const roadClosuresRef = useRef<any[]>([])
   const roadClosureDraftLayerRef = useRef<any>(null)
 
@@ -144,6 +146,7 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
   const [verificationState, setVerificationState] = useState<Record<string, { isVerified: boolean; verificationCount: number; reportCount: number; userVerified?: boolean; userReported?: boolean }>>({})
   const [snappedRoadPaths, setSnappedRoadPaths] = useState<Record<string, [number, number][]>>({})
   const [snappedDangerZonePolygons, setSnappedDangerZonePolygons] = useState<Record<string, [number, number][]>>({})
+  const [snappedTrackedCoverageRing, setSnappedTrackedCoverageRing] = useState<[number, number][] | null>(null)
   const [roadClosureDraftPoints, setRoadClosureDraftPoints] = useState<[number, number][]>([])
   const [roadClosureHoverPoint, setRoadClosureHoverPoint] = useState<[number, number] | null>(null)
   const [roadClosureDraftSnappedPath, setRoadClosureDraftSnappedPath] = useState<[number, number][] | null>(null)
@@ -183,6 +186,23 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
   }
 
   const filteredMarkers = allMarkers.filter((m) => activeFilters.has(m.type))
+
+  const safeInvalidateMap = () => {
+    const map = mapInstanceRef.current
+    if (!map) return
+
+    try {
+      if (typeof map.getContainer === "function") {
+        const container = map.getContainer()
+        if (!container || !container.isConnected) return
+      }
+
+      if (map._loaded === false) return
+      map.invalidateSize()
+    } catch {
+      // noop
+    }
+  }
 
   useEffect(() => {
     const roadClosuresToSnap = allMarkers.filter(
@@ -253,6 +273,26 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
       cancelled = true
     }
   }, [snappedDangerZonePolygons])
+
+  useEffect(() => {
+    if (snappedTrackedCoverageRing) return
+
+    let cancelled = false
+
+    const run = async () => {
+      const laRing = getTrackedCoverageRings()[0]
+      if (!laRing || laRing.length < 4) return
+      const snapped = await snapDangerZonePolygonToRoads(laRing)
+      if (cancelled) return
+      setSnappedTrackedCoverageRing(snapped)
+    }
+
+    run()
+
+    return () => {
+      cancelled = true
+    }
+  }, [snappedTrackedCoverageRing])
 
   // Handle verification/reporting
   const handleVerifyReport = (markerId: string) => {
@@ -428,6 +468,46 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
     }
   }, [activeFilters, mapReady, snappedDangerZonePolygons])
 
+  // Render gray mask over untracked areas (outside tracked danger-zone polygons)
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    const L = leafletRef.current
+    if (!map || !L) return
+
+    if (untrackedMaskRef.current) {
+      untrackedMaskRef.current.remove()
+      untrackedMaskRef.current = null
+    }
+
+    const outerRing: [number, number][] = [
+      [85, -180],
+      [85, 180],
+      [-85, 180],
+      [-85, -180],
+      [85, -180],
+    ]
+
+    const fallbackTrackedRing = getTrackedCoverageRings()[0]
+    const trackedRing = closeRing(snappedTrackedCoverageRing ?? fallbackTrackedRing)
+    const trackedRings = trackedRing.length >= 4 ? [trackedRing] : []
+
+    untrackedMaskRef.current = L.polygon([outerRing, ...trackedRings] as any, {
+      pane: "untrackedPane",
+      stroke: false,
+      fillColor: "#6b7280",
+      fillOpacity: 0.32,
+      interactive: false,
+      bubblingMouseEvents: false,
+    }).addTo(map)
+
+    return () => {
+      if (untrackedMaskRef.current) {
+        untrackedMaskRef.current.remove()
+        untrackedMaskRef.current = null
+      }
+    }
+  }, [mapReady, snappedTrackedCoverageRing])
+
   // Initialize map once on mount
   useEffect(() => {
     if (!mapRef.current) return
@@ -460,6 +540,15 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
       }
     }
 
+    if (!map.getPane("untrackedPane")) {
+      map.createPane("untrackedPane")
+      const pane = map.getPane("untrackedPane")
+      if (pane) {
+        pane.style.zIndex = "340"
+        pane.style.pointerEvents = "none"
+      }
+    }
+
     L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
       updateWhenIdle: false,
@@ -472,7 +561,7 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
 
       mapInstanceRef.current = map
       setMapReady(true)
-      setTimeout(() => map.invalidateSize(), 100)
+      setTimeout(() => safeInvalidateMap(), 100)
     }
 
     loadMap()
@@ -490,9 +579,7 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
   // keep size in sync with window/viewport changes (keyboard, dvh, rotation)
   useEffect(() => {
     const handler = () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.invalidateSize()
-      }
+      safeInvalidateMap()
     }
     window.addEventListener("resize", handler)
     if ((window as any).visualViewport) {
@@ -532,7 +619,7 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
     // ensure map repaints after drawer transition
     if (mapInstanceRef.current) {
       setTimeout(() => {
-        mapInstanceRef.current.invalidateSize()
+        safeInvalidateMap()
       }, 100)
     }
   }
@@ -582,7 +669,7 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
     setRoadClosureDraftSnappedPath(null)
     // trigger immediate resize in case map tiles grey out
     if (mapInstanceRef.current) {
-      setTimeout(() => mapInstanceRef.current.invalidateSize(), 300)
+      setTimeout(() => safeInvalidateMap(), 300)
     }
   }
 
@@ -804,16 +891,14 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
     const map = mapInstanceRef.current
     if (!map) return
 
+    const timeoutIds: number[] = []
+
     // helper to invalidate size a few times around animations
     const pokeInvalidate = () => {
-      try {
-        map.invalidateSize()
-      } catch (e) {
-        // noop
-      }
-      setTimeout(() => map.invalidateSize(), 100)
-      setTimeout(() => map.invalidateSize(), 300)
-      setTimeout(() => map.invalidateSize(), 600)
+      safeInvalidateMap()
+      timeoutIds.push(window.setTimeout(() => safeInvalidateMap(), 100))
+      timeoutIds.push(window.setTimeout(() => safeInvalidateMap(), 300))
+      timeoutIds.push(window.setTimeout(() => safeInvalidateMap(), 600))
     }
 
     pokeInvalidate()
@@ -850,6 +935,7 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
     }
 
     return () => {
+      timeoutIds.forEach((id) => window.clearTimeout(id))
       if (placementHandlerRef.current) {
         map.off("click", placementHandlerRef.current)
         placementHandlerRef.current = null
@@ -868,7 +954,7 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
         ref={mapRef}
         style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, minHeight: "100%" }}
         className="absolute inset-0 bg-secondary z-0"
-        onTransitionEnd={() => mapInstanceRef.current?.invalidateSize()}
+        onTransitionEnd={safeInvalidateMap}
       />
 
       {/* Filter Toggle */}
@@ -1036,7 +1122,7 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
                     document.activeElement.blur()
                   }
                   // also re-layout map
-                  if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize()
+                  safeInvalidateMap()
                 }}
                 className="mt-3 px-3 py-2 rounded-lg bg-secondary text-foreground text-xs font-medium hover:bg-secondary/70 transition-colors"
               >

@@ -5,28 +5,14 @@ import { AppHeader } from "@/components/app-header"
 import { BottomNav, type TabId } from "@/components/bottom-nav"
 import { CrisisPage } from "@/components/crisis-page"
 import { SafeModePage } from "@/components/safe-page"
+import { UntrackedPage } from "@/components/untracked-page"
 import { CompassPage } from "@/components/compass-page"
 import { CommsPage } from "@/components/comms-page"
 import { CommunityPage } from "@/components/community-page"
 import { dangerZones } from "@/lib/MockData/mock-data"
+import { isPointTracked, pointInPolygon } from "@/lib/tracking"
 
 type LocationStatus = "loading" | "denied" | "ready"
-
-function pointInPolygon(point: [number, number], polygon: Array<[number, number]>) {
-  // Ray casting algorithm (fine for local polygons)
-  const [x, y] = point
-  let inside = false
-
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const [xi, yi] = polygon[i]
-    const [xj, yj] = polygon[j]
-
-    const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi + 0.0) + xi
-    if (intersect) inside = !inside
-  }
-
-  return inside
-}
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabId>("crisis")
@@ -59,6 +45,11 @@ export default function Home() {
     return dangerZones.some((z) => z.polygon.length >= 3 && pointInPolygon(userPoint, z.polygon))
   }, [userPoint])
 
+  const isInTrackedArea = useMemo(() => {
+    if (!userPoint) return false
+    return isPointTracked(userPoint)
+  }, [userPoint])
+
   function openCompassAll() {
     setCompassPreset("all")
     setActiveTab("compass")
@@ -85,7 +76,7 @@ export default function Home() {
                 <div className="rounded-xl border border-border bg-card p-4">
                   <p className="text-sm font-semibold text-foreground">Checking your location…</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    This determines whether to show Crisis Mode or Safe Mode.
+                    This determines whether to show Crisis, Safe, or Untracked Mode.
                   </p>
                 </div>
               </div>
@@ -98,8 +89,10 @@ export default function Home() {
             {locationStatus === "ready" && (
               isInDangerZone ? (
                 <CrisisPage />
-              ) : (
+              ) : isInTrackedArea ? (
                 <SafeModePage onViewMap={openCompassAll} onVolunteer={openCompassVolunteers} onFindShelter={openCompassShelters} />
+              ) : (
+                <UntrackedPage onViewMap={openCompassAll} />
               )
             )}
           </>

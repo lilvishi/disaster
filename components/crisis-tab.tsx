@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { CrisisPage } from "./crisis-page"
 import { SafeModePage } from "./safe-page"
+import { UntrackedPage } from "./untracked-page"
+import { isPointTracked, pointInPolygon } from "@/lib/tracking"
 
 // MVP: shape of /api/map response (adjust to match your backend)
 type DangerZone = {
@@ -20,27 +22,11 @@ type LocationState =
   | { status: "loading" }
   | { status: "denied" }
   | { status: "safe" }
+  | { status: "untracked" }
   | { status: "danger" }
 
-function pointInPolygon(point: [number, number], polygon: Array<[number, number]>) {
-  // Ray casting (lat/lng treated as x/y). Works fine for small local polygons (MVP).
-  const [x, y] = point
-  let inside = false
-
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const [xi, yi] = polygon[i]
-    const [xj, yj] = polygon[j]
-
-    const intersect =
-      yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi + 0.0) + xi
-
-    if (intersect) inside = !inside
-  }
-
-  return inside
-}
-
 export default function CrisisTab() {
+  const noop = () => {}
   const [state, setState] = useState<LocationState>({ status: "loading" })
   const [userPoint, setUserPoint] = useState<[number, number] | null>(null) // [lat, lng]
   const [zones, setZones] = useState<DangerZone[]>([])
@@ -83,10 +69,20 @@ export default function CrisisTab() {
     return zones.some((z) => pointInPolygon(userPoint, z.polygon))
   }, [userPoint, zones])
 
+  const inTrackedArea = useMemo(() => {
+    if (!userPoint) return false
+    return isPointTracked(userPoint)
+  }, [userPoint, zones])
+
   useEffect(() => {
     if (!userPoint) return
-    setState({ status: inDanger ? "danger" : "safe" })
-  }, [userPoint, inDanger])
+    if (inDanger) {
+      setState({ status: "danger" })
+      return
+    }
+
+    setState({ status: inTrackedArea ? "safe" : "untracked" })
+  }, [userPoint, inDanger, inTrackedArea])
 
   // Loading / denied states (simple MVP)
   if (state.status === "loading") {
@@ -111,10 +107,12 @@ export default function CrisisTab() {
         </div>
 
         {/* If location is denied, show SafeModePage as a non-blocking default */}
-        <SafeModePage />
+        <SafeModePage onViewMap={noop} onVolunteer={noop} onFindShelter={noop} />
       </div>
     )
   }
 
-  return state.status === "danger" ? <CrisisPage /> : <SafeModePage />
+  if (state.status === "danger") return <CrisisPage />
+  if (state.status === "safe") return <SafeModePage onViewMap={noop} onVolunteer={noop} onFindShelter={noop} />
+  return <UntrackedPage onViewMap={noop} />
 }
