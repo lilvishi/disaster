@@ -127,6 +127,8 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
   const markersRef = useRef<any[]>([])
   const polygonsRef = useRef<any[]>([])
   const untrackedMaskRef = useRef<any>(null)
+  const userLocationMarkerRef = useRef<any>(null)
+  const userLocationAccuracyRef = useRef<any>(null)
   const roadClosuresRef = useRef<any[]>([])
   const roadClosureDraftLayerRef = useRef<any>(null)
 
@@ -139,6 +141,7 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
   const [mapZoom, setMapZoom] = useState(13)
   const [showFilters, setShowFilters] = useState(false)
   const [mapReady, setMapReady] = useState(false)
+  const [isLocating, setIsLocating] = useState(false)
   const [showReportMenu, setShowReportMenu] = useState(false)
   const [reportingMode, setReportingMode] = useState<ReportType | null>(null)
   const [formData, setFormData] = useState<FormData>({ label: "", details: "" })
@@ -567,6 +570,14 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
     loadMap()
 
     return () => {
+      if (userLocationMarkerRef.current) {
+        userLocationMarkerRef.current.remove()
+        userLocationMarkerRef.current = null
+      }
+      if (userLocationAccuracyRef.current) {
+        userLocationAccuracyRef.current.remove()
+        userLocationAccuracyRef.current = null
+      }
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove()
         mapInstanceRef.current = null
@@ -671,6 +682,73 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
     if (mapInstanceRef.current) {
       setTimeout(() => safeInvalidateMap(), 300)
     }
+  }
+
+  const handleGoToMyLocation = () => {
+    if (isLocating) return
+
+    const map = mapInstanceRef.current
+    if (!map) return
+
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported on this device.")
+      return
+    }
+
+    setIsLocating(true)
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const activeMap = mapInstanceRef.current
+        const L = leafletRef.current
+        if (!activeMap || !L) {
+          setIsLocating(false)
+          return
+        }
+
+        if (userLocationMarkerRef.current) {
+          userLocationMarkerRef.current.remove()
+          userLocationMarkerRef.current = null
+        }
+        if (userLocationAccuracyRef.current) {
+          userLocationAccuracyRef.current.remove()
+          userLocationAccuracyRef.current = null
+        }
+
+        userLocationAccuracyRef.current = L.circle([pos.coords.latitude, pos.coords.longitude], {
+          radius: Math.min(Math.max(pos.coords.accuracy || 0, 35), 500),
+          color: "#2563eb",
+          fillColor: "#60a5fa",
+          fillOpacity: 0.12,
+          weight: 1,
+        }).addTo(activeMap)
+
+        userLocationMarkerRef.current = L.circleMarker([pos.coords.latitude, pos.coords.longitude], {
+          radius: 7,
+          color: "#ffffff",
+          weight: 2,
+          fillColor: "#2563eb",
+          fillOpacity: 1,
+        })
+          .addTo(activeMap)
+          .bindPopup("Your location")
+
+        activeMap.flyTo([pos.coords.latitude, pos.coords.longitude], 15, {
+          animate: true,
+          duration: 0.8,
+        })
+        setIsLocating(false)
+      },
+      () => {
+        setIsLocating(false)
+        alert("Could not access your location. Check location permissions and try again.")
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 30000,
+      }
+    )
   }
 
   const renderReportForm = () => {
@@ -971,6 +1049,16 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
         <Layers className="h-4 w-4 text-muted-foreground" />
         <span className="text-xs text-muted-foreground">{filteredMarkers.length} locations</span>
       </div>
+
+      {/* My Location */}
+      <button
+        onClick={handleGoToMyLocation}
+        disabled={isLocating}
+        className="absolute top-14 left-3 z-[1000] flex items-center gap-1.5 rounded-lg bg-card/95 backdrop-blur-md border border-border px-3 py-2 shadow-lg transition-colors hover:bg-secondary disabled:opacity-70 disabled:cursor-not-allowed"
+      >
+        <MapPin className="h-4 w-4 text-foreground" />
+        <span className="text-xs font-medium text-foreground">{isLocating ? "Locating..." : "My Location"}</span>
+      </button>
 
       {/* Report Button */}
       <button
