@@ -19,8 +19,8 @@ self.addEventListener('message', function(event) {
     
     self.registration.showNotification(title || 'Fire near your area', {
       body: body || 'An urgent update was posted to your community.',
-      icon: icon || '/icons/icon-192.jpg',
-      badge: icon || '/icons/icon-192.jpg',
+      icon: icon || '/icons/SafeSeek192.png',
+      badge: icon || '/icons/SafeSeek192.png',
       vibrate: [200, 100, 200],
       tag: 'notification',
       requireInteraction: false,
