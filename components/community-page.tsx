@@ -293,7 +293,7 @@ function CommunityFeed() {
       // delay 10 seconds then show notification via service worker
       setTimeout(() => {
         triggerNotification("Fire near your area", "An urgent update was posted to your community.")
-      }, 1000)
+      }, 3000)
     }
     setNewPostContent("")
     setMediaType(null)
@@ -493,7 +493,7 @@ function CommunityFeed() {
         >
           Most Upvotes
         </button>
-        <button
+        {/* <button
           onClick={handleTestPush}
           className={cn(
             "rounded-lg px-3 py-1 text-xs",
@@ -501,23 +501,6 @@ function CommunityFeed() {
           )}
         >
           Test Push
-        </button>
-        {/* <button
-          onClick={async () => {
-            try {
-              await fetch('/api/send-push', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: 'Test: Fire near your area', body: 'This is a test push message.' }),
-              })
-              alert('Test push requested (server will attempt to send to saved subscriptions)')
-            } catch (e) {
-              alert('Failed to request test push')
-            }
-          }}
-          className={cn("rounded-lg px-3 py-1 text-xs", pushSubscribed ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground')}
-        >
-          Send Test Push
         </button> */}
       </div>
 
