@@ -18,6 +18,7 @@ export interface MapMarker {
   label: string
   details?: string
   status?: string
+  roadPath?: [number, number][]
   // Danger Zone fields
   acres?: number
   containmentPercent?: number
@@ -201,11 +202,18 @@ export const mapMarkers: MapMarker[] = [
   },
   {
     id: "7",
-    lat: 34.0522,
-    lng: -118.3037,
+    lat: 34.0478,
+    lng: -118.2745,
     type: "road-closed",
     label: "Canyon Rd Closed",
     details: "Fire damage, no access",
+    roadPath: [
+      [34.0478, -118.2798],
+      [34.0478, -118.2776],
+      [34.0478, -118.2754],
+      [34.0478, -118.2732],
+      [34.0478, -118.2710],
+    ],
   },
   {
     id: "8",
