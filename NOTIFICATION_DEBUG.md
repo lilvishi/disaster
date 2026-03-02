@@ -83,4 +83,4 @@
 1. `components/community-page.tsx` - Service worker registration and triggerNotification
 2. `public/sw.js` - Service worker logic
 3. `next.config.mjs` - Header configuration
-4. `public/icons/*` - Added missing icon files
+4. `public/s/*` - Added missing icon files

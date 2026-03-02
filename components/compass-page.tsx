@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { createPortal } from "react-dom"
 
 const markerConfig: Record<MapMarker["type"], { color: string; icon: typeof Flame; label: string }> = {
-  danger: { color: "#085c24", icon: Flame, label: "Danger Zone" },
+  danger: { color: "#d91515", icon: Flame, label: "Danger Zone" },
   shelter: { color: "#3b82f6", icon: Home, label: "Shelter" },
   volunteer: { color: "#a855f7", icon: HandHeart, label: "Volunteer" },
   "food-bank": { color: "#22c55e", icon: UtensilsCrossed, label: "Food Bank" },
@@ -73,6 +73,52 @@ async function snapRoadPathToRoads(path: [number, number][]): Promise<[number, n
   }
 }
 
+function isSamePoint(a: [number, number], b: [number, number]) {
+  return a[0] === b[0] && a[1] === b[1]
+}
+
+function closeRing(path: [number, number][]): [number, number][] {
+  if (path.length === 0) return path
+  const first = path[0]
+  const last = path[path.length - 1]
+  if (isSamePoint(first, last)) return path
+  return [...path, first]
+}
+
+function samplePolygonWaypoints(polygon: [number, number][], maxWaypoints = 14): [number, number][] {
+  if (polygon.length < 4) return polygon
+
+  const first = polygon[0]
+  const last = polygon[polygon.length - 1]
+  const ring = isSamePoint(first, last) ? polygon.slice(0, -1) : [...polygon]
+  if (ring.length < 3) return polygon
+
+  const targetCount = Math.min(maxWaypoints, ring.length)
+  const step = Math.max(1, Math.floor(ring.length / targetCount))
+  const sampled: [number, number][] = []
+
+  for (let i = 0; i < ring.length; i += step) {
+    sampled.push(ring[i])
+  }
+
+  if (sampled.length < 3) {
+    return polygon
+  }
+
+  return closeRing(sampled)
+}
+
+async function snapDangerZonePolygonToRoads(polygon: [number, number][]): Promise<[number, number][]> {
+  const sampledRing = samplePolygonWaypoints(polygon)
+  if (sampledRing.length < 4) return polygon
+
+  const snapped = await snapRoadPathToRoads(sampledRing)
+  const closed = closeRing(snapped)
+
+  if (closed.length < 4) return polygon
+  return closed
+}
+
 export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" | "shelter" }) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null) // store Leaflet map instance
@@ -97,6 +143,7 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
   const [placingMarker, setPlacingMarker] = useState(false)
   const [verificationState, setVerificationState] = useState<Record<string, { isVerified: boolean; verificationCount: number; reportCount: number; userVerified?: boolean; userReported?: boolean }>>({})
   const [snappedRoadPaths, setSnappedRoadPaths] = useState<Record<string, [number, number][]>>({})
+  const [snappedDangerZonePolygons, setSnappedDangerZonePolygons] = useState<Record<string, [number, number][]>>({})
   const [roadClosureDraftPoints, setRoadClosureDraftPoints] = useState<[number, number][]>([])
   const [roadClosureHoverPoint, setRoadClosureHoverPoint] = useState<[number, number] | null>(null)
   const [roadClosureDraftSnappedPath, setRoadClosureDraftSnappedPath] = useState<[number, number][] | null>(null)
@@ -171,6 +218,41 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
       cancelled = true
     }
   }, [allMarkers, snappedRoadPaths])
+
+  useEffect(() => {
+    const zonesToSnap = dangerZones.filter(
+      (zone) => zone.polygon.length > 3 && !snappedDangerZonePolygons[zone.id]
+    )
+
+    if (zonesToSnap.length === 0) return
+
+    let cancelled = false
+
+    const run = async () => {
+      const updates = await Promise.all(
+        zonesToSnap.map(async (zone) => {
+          const snapped = await snapDangerZonePolygonToRoads(zone.polygon)
+          return { id: zone.id, polygon: snapped }
+        })
+      )
+
+      if (cancelled) return
+
+      setSnappedDangerZonePolygons((prev) => {
+        const next = { ...prev }
+        updates.forEach((update) => {
+          next[update.id] = update.polygon
+        })
+        return next
+      })
+    }
+
+    run()
+
+    return () => {
+      cancelled = true
+    }
+  }, [snappedDangerZonePolygons])
 
   // Handle verification/reporting
   const handleVerifyReport = (markerId: string) => {
@@ -330,7 +412,8 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
     // Add danger zone polygons only if filter is active
     if (activeFilters.has("danger")) {
       dangerZones.forEach((zone) => {
-        const polygon = leafletRef.current.polygon(zone.polygon as any, {
+        const renderedPolygon = snappedDangerZonePolygons[zone.id] ?? zone.polygon
+        const polygon = leafletRef.current.polygon(renderedPolygon as any, {
           color: zone.color,
           fillColor: zone.color,
           fillOpacity: 0.15,
@@ -343,7 +426,7 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
         polygonsRef.current.push(polygon)
       })
     }
-  }, [activeFilters, mapReady])
+  }, [activeFilters, mapReady, snappedDangerZonePolygons])
 
   // Initialize map once on mount
   useEffect(() => {
