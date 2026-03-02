@@ -27,7 +27,7 @@ export interface MapMarker {
   // Shelter & Food Bank fields
   currentCapacity?: number
   maxCapacity?: number
-  foodCondition?: "stable" | "shortage" | "critical"
+  foodCondition?: "food condition stable" | "in shortage" | "critical shortage"
   contactInfo?: string
   safetyReports?: string[]
   // Crowd Report fields
@@ -149,7 +149,7 @@ export const mapMarkers: MapMarker[] = [
     status: "Open",
     currentCapacity: 312,
     maxCapacity: 500,
-    foodCondition: "stable",
+    foodCondition: "food condition stable",
     contactInfo: "555-0142",
     safetyReports: ["meow", "meow"],
   },
@@ -162,7 +162,7 @@ export const mapMarkers: MapMarker[] = [
     status: "Near Full",
     currentCapacity: 289,
     maxCapacity: 300,
-    foodCondition: "shortage",
+    foodCondition: "in shortage",
     contactInfo: "555-0143",
     safetyReports: ["meow"],
   },
@@ -175,7 +175,7 @@ export const mapMarkers: MapMarker[] = [
     status: "Active",
     currentCapacity: 100,
     maxCapacity: 150,
-    foodCondition: "stable",
+    foodCondition: "food condition stable",
     contactInfo: "555-0144",
     safetyReports: ["meow"],
   },
@@ -198,7 +198,7 @@ export const mapMarkers: MapMarker[] = [
     status: "Open",
     currentCapacity: 150,
     maxCapacity: 400,
-    foodCondition: "stable",
+    foodCondition: "food condition stable",
     contactInfo: "555-0199",
   },
   {
@@ -210,7 +210,7 @@ export const mapMarkers: MapMarker[] = [
     status: "Open",
     currentCapacity: 80,
     maxCapacity: 300,
-    foodCondition: "shortage",
+    foodCondition: "in shortage",
     contactInfo: "555-0188",
   },
   {
@@ -222,7 +222,7 @@ export const mapMarkers: MapMarker[] = [
     status: "Near Full",
     currentCapacity: 290,
     maxCapacity: 300,
-    foodCondition: "stable",
+    foodCondition: "food condition stable",
     contactInfo: "555-0177",
   },
   {
@@ -234,7 +234,7 @@ export const mapMarkers: MapMarker[] = [
     status: "Open",
     currentCapacity: 120,
     maxCapacity: 500,
-    foodCondition: "stable",
+    foodCondition: "food condition stable",
     contactInfo: "555-0166",
   },
   {
@@ -246,7 +246,7 @@ export const mapMarkers: MapMarker[] = [
     status: "Open",
     currentCapacity: 220,
     maxCapacity: 600,
-    foodCondition: "stable",
+    foodCondition: "food condition stable",
     contactInfo: "555-0155",
   },
   {
@@ -258,7 +258,7 @@ export const mapMarkers: MapMarker[] = [
     status: "Open",
     currentCapacity: 400,
     maxCapacity: 1000,
-    foodCondition: "stable",
+    foodCondition: "food condition stable",
     contactInfo: "555-0140",
   },
   // food banks
@@ -271,7 +271,7 @@ export const mapMarkers: MapMarker[] = [
     status: "Active",
     currentCapacity: 200,
     maxCapacity: 500,
-    foodCondition: "stable",
+    foodCondition: "food condition stable",
     contactInfo: "555-0133",
     safetyReports: [],
   },
@@ -284,7 +284,7 @@ export const mapMarkers: MapMarker[] = [
     status: "Active",
     currentCapacity: 150,
     maxCapacity: 400,
-    foodCondition: "stable",
+    foodCondition: "food condition stable",
     contactInfo: "555-0122",
     safetyReports: [],
   },
@@ -297,7 +297,7 @@ export const mapMarkers: MapMarker[] = [
     status: "Active",
     currentCapacity: 300,
     maxCapacity: 600,
-    foodCondition: "stable",
+    foodCondition: "food condition stable",
     contactInfo: "555-0111",
     safetyReports: [],
   },
@@ -310,7 +310,7 @@ export const mapMarkers: MapMarker[] = [
     status: "Active",
     currentCapacity: 180,
     maxCapacity: 450,
-    foodCondition: "stable",
+    foodCondition: "food condition stable",
     contactInfo: "555-0100",
     safetyReports: [],
   },
@@ -323,7 +323,7 @@ export const mapMarkers: MapMarker[] = [
     status: "Active",
     currentCapacity: 220,
     maxCapacity: 500,
-    foodCondition: "stable",
+    foodCondition: "food condition stable",
     contactInfo: "555-0099",
     safetyReports: [],
   },

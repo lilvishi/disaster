@@ -889,10 +889,10 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
       {/* Report Button */}
       <button
         onClick={() => setShowReportMenu(!showReportMenu)}
-        className="absolute bottom-3 right-3 z-[1000] flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-3 py-2 shadow-lg transition-colors hover:opacity-90"
+        className="absolute right-4 z-[1000] flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-5 py-3 shadow-lg transition-colors hover:opacity-90 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)]"
       >
-        <Megaphone className="h-4 w-4" />
-        <span className="text-xs font-medium">Report</span>
+        <Megaphone className="h-5 w-5" />
+        <span className="text-sm font-semibold">Report</span>
       </button>
 
       {/* Filter Panel */}
