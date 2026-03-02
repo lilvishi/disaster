@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Service Worker Test</title>
+</head>
+<body>
+  <h1>Service Worker Test</h1>
+  <button onclick="testNotification()">Test Notification</button>
+  <button onclick="registerSW()">Register Service Worker</button>
+  <div id="log" style="border: 1px solid black; padding: 10px; height: 200px; overflow-y: auto;"></div>
+
+  <script>
+    const log = document.getElementById('log')
+
+    function addLog(msg) {
+      const timestamp = new Date().toLocaleTimeString()
+      log.innerHTML += `<div>[${timestamp}] ${msg}</div>`
+      log.scrollTop = log.scrollHeight
+    }
+
+    async function registerSW() {
+      try {
+        addLog('Registering service worker...')
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.register('/sw.js')
+          addLog('Service Worker registered: ' + reg.scope)
+          
+          await navigator.serviceWorker.ready
+          addLog('Service Worker is ready')
+          
+          if ('Notification' in window) {
+            if (Notification.permission === 'default') {
+              const perm = await Notification.requestPermission()
+              addLog('Notification permission: ' + perm)
+            } else {
+              addLog('Notification permission already: ' + Notification.permission)
+            }
+          }
+        }
+      } catch (e) {
+        addLog('Error: ' + e.message)
+      }
+    }
+
+    function testNotification() {
+      addLog('Sending test message to service worker...')
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        addLog('Service Worker controller found, sending message')
+        navigator.serviceWorker.controller.postMessage({
+          type: 'SHOW_NOTIFICATION',
+          title: 'Test Notification',
+          body: 'This is a test notification from the page',
+          icon: '/icons/icon-192.png',
+        })
+      } else {
+        addLog('ERROR: No service worker controller available')
+        addLog('controller: ' + navigator.serviceWorker.controller)
+      }
+    }
+
+    // Auto register on load
+    window.addEventListener('load', () => {
+      addLog('Page loaded')
+      registerSW()
+    })
+  </script>
+</body>
+</html>
