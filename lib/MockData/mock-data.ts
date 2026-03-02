@@ -473,6 +473,52 @@ export interface DangerZone {
   containmentPercent: number
 }
 
+// Danger zone boundaries as GeoJSON polygons
+export interface DangerZone {
+  id: string
+  name: string
+  type: "fire" | "flood" | "storm"
+  color: string
+  polygon: [number, number][] // [lat, lng] pairs
+  dangerLevel: "active-threat" | "incoming" | "contained"
+  acres: number
+  containmentPercent: number
+}
+
+
+// helper to convert meters to degrees latitude/longitude at a given latitude
+function metersToDegLat(m: number) {
+  return m / 111320
+}
+function metersToDegLng(m: number, lat: number) {
+  return m / (111320 * Math.cos((lat * Math.PI) / 180))
+}
+
+// generate a roughly circular polygon with radial noise to simulate irregular wildfire perimeters
+function generateIrregularPolygon(
+  lat: number,
+  lng: number,
+  radiusMeters: number,
+  points = 48,
+  variance = 0.3
+): [number, number][] {
+  const coords: [number, number][] = []
+  for (let i = 0; i < points; i++) {
+    const theta = (i / points) * Math.PI * 2
+    const rand = 1 + (Math.random() * 2 - 1) * variance
+    const r = radiusMeters * rand
+    const dy = Math.sin(theta) * r
+    const dx = Math.cos(theta) * r
+    coords.push([
+      lat + metersToDegLat(dy),
+      lng + metersToDegLng(dx, lat),
+    ])
+  }
+  coords.push(coords[0]) // close ring
+  return coords
+}
+
+
 export const dangerZones: DangerZone[] = [
   {
     id: "dz-1",
@@ -482,13 +528,7 @@ export const dangerZones: DangerZone[] = [
     dangerLevel: "active-threat",
     acres: 3200,
     containmentPercent: 20,
-    polygon: [
-      [34.0522, -118.2637],
-      [34.0620, -118.2637],
-      [34.0620, -118.2540],
-      [34.0522, -118.2540],
-      [34.0522, -118.2637],
-    ],
+    polygon: generateIrregularPolygon(34.0522, -118.2637, 1200, 60, 0.4),
   },
   {
     id: "dz-2",
@@ -498,13 +538,7 @@ export const dangerZones: DangerZone[] = [
     dangerLevel: "incoming",
     acres: 1500,
     containmentPercent: 0,
-    polygon: [
-      [34.0622, -118.2837],
-      [34.0750, -118.2837],
-      [34.0750, -118.2700],
-      [34.0622, -118.2700],
-      [34.0622, -118.2837],
-    ],
+    polygon: generateIrregularPolygon(34.0622, -118.2837, 800, 50, 0.5),
   },
 ]
 
