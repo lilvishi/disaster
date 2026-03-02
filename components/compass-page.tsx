@@ -52,12 +52,35 @@ interface FormData {
   [key: string]: string | number | string[] | undefined
 }
 
+async function snapRoadPathToRoads(path: [number, number][]): Promise<[number, number][]> {
+  if (path.length < 2) return path
+
+  try {
+    const coords = path.map(([lat, lng]) => `${lng},${lat}`).join(";")
+    const response = await fetch(
+      `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`
+    )
+
+    if (!response.ok) return path
+
+    const data = await response.json()
+    const snapped = data?.routes?.[0]?.geometry?.coordinates as [number, number][] | undefined
+    if (!snapped || snapped.length < 2) return path
+
+    return snapped.map(([lng, lat]) => [lat, lng])
+  } catch {
+    return path
+  }
+}
+
 export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" | "shelter" }) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null) // store Leaflet map instance
   const leafletRef = useRef<any>(null) // store Leaflet namespace (L)
   const markersRef = useRef<any[]>([])
   const polygonsRef = useRef<any[]>([])
+  const roadClosuresRef = useRef<any[]>([])
+  const roadClosureDraftLayerRef = useRef<any>(null)
 
   const [allMarkers, setAllMarkers] = useState<MapMarker[]>(mapMarkers)
   const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null)
@@ -65,6 +88,7 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
   const [activeFilters, setActiveFilters] = useState<Set<MapMarker["type"]>>(
     new Set(["danger", "shelter", "volunteer", "food-bank", "report", "road-closed"])
   )
+  const [mapZoom, setMapZoom] = useState(13)
   const [showFilters, setShowFilters] = useState(false)
   const [mapReady, setMapReady] = useState(false)
   const [showReportMenu, setShowReportMenu] = useState(false)
@@ -72,11 +96,17 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
   const [formData, setFormData] = useState<FormData>({ label: "", details: "" })
   const [placingMarker, setPlacingMarker] = useState(false)
   const [verificationState, setVerificationState] = useState<Record<string, { isVerified: boolean; verificationCount: number; reportCount: number; userVerified?: boolean; userReported?: boolean }>>({})
+  const [snappedRoadPaths, setSnappedRoadPaths] = useState<Record<string, [number, number][]>>({})
+  const [roadClosureDraftPoints, setRoadClosureDraftPoints] = useState<[number, number][]>([])
+  const [roadClosureHoverPoint, setRoadClosureHoverPoint] = useState<[number, number] | null>(null)
+  const [roadClosureDraftSnappedPath, setRoadClosureDraftSnappedPath] = useState<[number, number][] | null>(null)
 
   const placingMarkerRef = useRef(false)
   const placementHandlerRef = useRef<any>(null)
+  const placementMoveHandlerRef = useRef<any>(null)
   const latestFormDataRef = useRef<FormData>(formData)
   const reportingModeRef = useRef<ReportType | null>(reportingMode)
+  const draftSnapRequestIdRef = useRef(0)
 
   // Load verification state from localStorage
   useEffect(() => {
@@ -106,6 +136,41 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
   }
 
   const filteredMarkers = allMarkers.filter((m) => activeFilters.has(m.type))
+
+  useEffect(() => {
+    const roadClosuresToSnap = allMarkers.filter(
+      (marker) => marker.type === "road-closed" && marker.roadPath && marker.roadPath.length > 1 && !snappedRoadPaths[marker.id]
+    )
+
+    if (roadClosuresToSnap.length === 0) return
+
+    let cancelled = false
+
+    const run = async () => {
+      const updates = await Promise.all(
+        roadClosuresToSnap.map(async (marker) => {
+          const snapped = await snapRoadPathToRoads(marker.roadPath as [number, number][])
+          return { id: marker.id, path: snapped }
+        })
+      )
+
+      if (cancelled) return
+
+      setSnappedRoadPaths((prev) => {
+        const next = { ...prev }
+        updates.forEach((update) => {
+          next[update.id] = update.path
+        })
+        return next
+      })
+    }
+
+    run()
+
+    return () => {
+      cancelled = true
+    }
+  }, [allMarkers, snappedRoadPaths])
 
   // Handle verification/reporting
   const handleVerifyReport = (markerId: string) => {
@@ -181,6 +246,10 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
 
     // Add filtered markers
     filteredMarkers.forEach((marker) => {
+      if (marker.type === "road-closed" && marker.roadPath && marker.roadPath.length > 1) {
+        return
+      }
+
       const config = markerConfig[marker.type]
       const verification = verificationState[marker.id]
       const isVerified = marker.type === "report" ? verification?.isVerified || marker.isVerified : undefined
@@ -205,6 +274,50 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
       markersRef.current.push(leafletMarker)
     })
   }, [filteredMarkers, verificationState, mapReady])
+
+  // Render road closure overlays as line segments
+  useEffect(() => {
+    if (!mapInstanceRef.current) return
+
+    roadClosuresRef.current.forEach((road) => road.remove())
+    roadClosuresRef.current = []
+
+    const L = leafletRef.current
+    if (!L) return
+
+    filteredMarkers
+      .filter((marker) => marker.type === "road-closed" && marker.roadPath && marker.roadPath.length > 1)
+      .forEach((marker) => {
+        const renderedPath = snappedRoadPaths[marker.id] ?? (marker.roadPath as [number, number][])
+
+        const isFarZoom = mapZoom <= 12
+        const casingWeight = isFarZoom ? 6 : 10
+        const closureWeight = isFarZoom ? 3 : 7
+        const closureDash = isFarZoom ? "4 10" : "12 8"
+
+        const casing = L.polyline(renderedPath, {
+          pane: "roadClosuresPane",
+          color: "#ffffff",
+          weight: casingWeight,
+          opacity: 0.9,
+          lineCap: "round",
+        }).addTo(mapInstanceRef.current!)
+
+        const roadClosure = L.polyline(renderedPath, {
+          pane: "roadClosuresPane",
+          color: "#ef4444",
+          weight: closureWeight,
+          opacity: 0.95,
+          lineCap: "round",
+          dashArray: closureDash,
+        })
+          .addTo(mapInstanceRef.current!)
+          .on("click", () => setSelectedMarker(marker))
+
+        roadClosuresRef.current.push(casing)
+        roadClosuresRef.current.push(roadClosure)
+      })
+  }, [filteredMarkers, mapReady, snappedRoadPaths, mapZoom])
 
   // Render danger zone polygons
   useEffect(() => {
@@ -256,12 +369,23 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
       fadeAnimation: false,
     })
 
+    if (!map.getPane("roadClosuresPane")) {
+      map.createPane("roadClosuresPane")
+      const pane = map.getPane("roadClosuresPane")
+      if (pane) {
+        pane.style.zIndex = "550"
+      }
+    }
+
     L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
       updateWhenIdle: false,
       updateWhenZooming: false,
       keepBuffer: 4,
     }).addTo(map)
+
+      setMapZoom(map.getZoom())
+      map.on("zoomend", () => setMapZoom(map.getZoom()))
 
       mapInstanceRef.current = map
       setMapReady(true)
@@ -299,20 +423,26 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
     }
   }, [])
 
-  const handleMarkerPlacement = (lat: number, lng: number) => {
+  const handleMarkerPlacement = (lat: number, lng: number, roadPath?: [number, number][]) => {
+    const reportType = reportingModeRef.current ?? reportingMode
+    const currentFormData = latestFormDataRef.current
+
     const newMarker: MapMarker & { imageUrl?: string } = {
       id: `user-${Date.now()}`,
       lat,
       lng,
-      ...formData,
-      type: reportingMode as MapMarker["type"],
+      ...currentFormData,
+      type: reportType as MapMarker["type"],
       status: "Unverified",
       userReportId: true,
-      imageUrl: formData.imageUrl,
+      imageUrl: currentFormData.imageUrl,
+      roadPath,
     }
 
     setAllMarkers((prev) => [...prev, newMarker])
     setPlacingMarker(false)
+    setRoadClosureDraftPoints([])
+    setRoadClosureDraftSnappedPath(null)
     setReportingMode(null)
     setFormData({ label: "", details: "" })
     setShowReportMenu(false)
@@ -322,6 +452,35 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
         mapInstanceRef.current.invalidateSize()
       }, 100)
     }
+  }
+
+  const handlePlacementTap = (lat: number, lng: number) => {
+    const reportType = reportingModeRef.current ?? reportingMode
+
+    if (reportType !== "road-closed") {
+      handleMarkerPlacement(lat, lng)
+      return
+    }
+
+    setRoadClosureDraftPoints((prev) => {
+      if (prev.length === 0) return [[lat, lng]]
+      if (prev.length === 1) {
+        setRoadClosureHoverPoint(null)
+        setRoadClosureDraftSnappedPath(null)
+        return [prev[0], [lat, lng]]
+      }
+      setRoadClosureDraftSnappedPath(null)
+      return [prev[0], [lat, lng]]
+    })
+  }
+
+  const confirmRoadClosurePlacement = () => {
+    if (roadClosureDraftPoints.length < 2) return
+    const [start, end] = roadClosureDraftPoints
+    const centerLat = (start[0] + end[0]) / 2
+    const centerLng = (start[1] + end[1]) / 2
+    handleMarkerPlacement(centerLat, centerLng, roadClosureDraftSnappedPath ?? [start, end])
+    setRoadClosureHoverPoint(null)
   }
 
   const handleReportSubmit = async () => {
@@ -335,6 +494,9 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
     }
     // keep drawer open, switch to placement mode
     setPlacingMarker(true)
+    setRoadClosureDraftPoints([])
+    setRoadClosureHoverPoint(null)
+    setRoadClosureDraftSnappedPath(null)
     // trigger immediate resize in case map tiles grey out
     if (mapInstanceRef.current) {
       setTimeout(() => mapInstanceRef.current.invalidateSize(), 300)
@@ -493,6 +655,69 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
   }, [selectedMarker?.id])
 
   useEffect(() => {
+    const isRoadDraft = placingMarker && reportingMode === "road-closed"
+    if (!isRoadDraft || roadClosureDraftPoints.length < 2) {
+      setRoadClosureDraftSnappedPath(null)
+      return
+    }
+
+    let cancelled = false
+    const requestId = ++draftSnapRequestIdRef.current
+
+    const run = async () => {
+      const snapped = await snapRoadPathToRoads([roadClosureDraftPoints[0], roadClosureDraftPoints[1]])
+      if (cancelled) return
+      if (requestId !== draftSnapRequestIdRef.current) return
+      setRoadClosureDraftSnappedPath(snapped)
+    }
+
+    run()
+
+    return () => {
+      cancelled = true
+    }
+  }, [placingMarker, reportingMode, roadClosureDraftPoints])
+
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    const L = leafletRef.current
+    if (!map || !L) return
+
+    if (roadClosureDraftLayerRef.current) {
+      roadClosureDraftLayerRef.current.remove()
+      roadClosureDraftLayerRef.current = null
+    }
+
+    const isRoadDraft = placingMarker && reportingMode === "road-closed"
+    if (!isRoadDraft) return
+
+    let previewPath: [number, number][] = []
+    if (roadClosureDraftPoints.length >= 2) {
+      previewPath = roadClosureDraftSnappedPath ?? [roadClosureDraftPoints[0], roadClosureDraftPoints[1]]
+    } else if (roadClosureDraftPoints.length === 1 && roadClosureHoverPoint) {
+      previewPath = [roadClosureDraftPoints[0], roadClosureHoverPoint]
+    }
+
+    if (previewPath.length < 2) return
+
+    roadClosureDraftLayerRef.current = L.polyline(previewPath, {
+      pane: "roadClosuresPane",
+      color: "#f59e0b",
+      weight: 5,
+      opacity: 0.9,
+      lineCap: "round",
+      dashArray: "8 8",
+    }).addTo(map)
+
+    return () => {
+      if (roadClosureDraftLayerRef.current) {
+        roadClosureDraftLayerRef.current.remove()
+        roadClosureDraftLayerRef.current = null
+      }
+    }
+  }, [placingMarker, reportingMode, roadClosureDraftPoints, roadClosureHoverPoint, roadClosureDraftSnappedPath, mapReady])
+
+  useEffect(() => {
     const map = mapInstanceRef.current
     if (!map) return
 
@@ -514,10 +739,19 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
       // attach a stable click handler so we don't depend on stale closures
       const handler = (e: any) => {
         console.debug("placement click", e?.latlng?.lat, e?.latlng?.lng)
-        handleMarkerPlacement(e.latlng.lat, e.latlng.lng)
+        handlePlacementTap(e.latlng.lat, e.latlng.lng)
       }
       placementHandlerRef.current = handler
       map.on("click", handler)
+
+      const moveHandler = (e: any) => {
+        if ((reportingModeRef.current ?? reportingMode) !== "road-closed") return
+        if (roadClosureDraftPoints.length === 1) {
+          setRoadClosureHoverPoint([e.latlng.lat, e.latlng.lng])
+        }
+      }
+      placementMoveHandlerRef.current = moveHandler
+      map.on("mousemove", moveHandler)
       console.debug("placement handler attached")
     } else {
       // remove handler if present
@@ -526,6 +760,10 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
         placementHandlerRef.current = null
         console.debug("placement handler removed")
       }
+      if (placementMoveHandlerRef.current) {
+        map.off("mousemove", placementMoveHandlerRef.current)
+        placementMoveHandlerRef.current = null
+      }
     }
 
     return () => {
@@ -533,8 +771,12 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
         map.off("click", placementHandlerRef.current)
         placementHandlerRef.current = null
       }
+      if (placementMoveHandlerRef.current) {
+        map.off("mousemove", placementMoveHandlerRef.current)
+        placementMoveHandlerRef.current = null
+      }
     }
-  }, [placingMarker, showReportMenu, reportingMode, mapReady])
+  }, [placingMarker, showReportMenu, reportingMode, mapReady, roadClosureDraftPoints.length])
 
   return (
     <div className={cn("relative h-full overflow-hidden", placingMarker && "cursor-crosshair")}>
@@ -646,6 +888,9 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
                 setReportingMode(null)
                 setFormData({ label: "", details: "" })
                 setPlacingMarker(false)
+                setRoadClosureDraftPoints([])
+                setRoadClosureHoverPoint(null)
+                setRoadClosureDraftSnappedPath(null)
               }}
               className="text-muted-foreground hover:text-foreground"
             >
@@ -661,6 +906,9 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
                   onClick={() => {
                     setReportingMode(null)
                     setFormData({ label: "", details: "" })
+                    setRoadClosureDraftPoints([])
+                    setRoadClosureHoverPoint(null)
+                    setRoadClosureDraftSnappedPath(null)
                   }}
                   className="flex-1 px-3 py-2 rounded-lg bg-secondary text-foreground text-xs font-medium hover:bg-secondary/70 transition-colors"
                 >
@@ -678,12 +926,28 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
           ) : (
             <div className="py-6 text-center">
               <p className="text-xs text-muted-foreground">
-                Tap the map to place your {formData.label || "marker"} or
-                cancel below.
+                {reportingMode === "road-closed"
+                  ? roadClosureDraftPoints.length === 0
+                    ? "Tap the map to set the start point of your road closure."
+                    : roadClosureDraftPoints.length === 1
+                      ? "Move the map pointer and tap to set the end point."
+                      : "Preview ready. Adjust by tapping a new end point, then confirm below."
+                  : `Tap the map to place your ${formData.label || "marker"} or cancel below.`}
               </p>
+              {reportingMode === "road-closed" && roadClosureDraftPoints.length >= 2 && (
+                <button
+                  onClick={confirmRoadClosurePlacement}
+                  className="mt-3 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-colors"
+                >
+                  Confirm road closure
+                </button>
+              )}
               <button
                 onClick={() => {
                   setPlacingMarker(false)
+                  setRoadClosureDraftPoints([])
+                  setRoadClosureHoverPoint(null)
+                  setRoadClosureDraftSnappedPath(null)
                   // blur to dismiss keyboard if still open
                   if (document.activeElement instanceof HTMLElement) {
                     document.activeElement.blur()
@@ -704,7 +968,15 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
       {/* Placement instruction overlay */}
       {placingMarker && (
         <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-[1000] bg-card/95 backdrop-blur-md border border-border px-3 py-2 rounded-lg shadow-lg">
-          <p className="text-xs text-foreground">Tap map to place your {formData.label || "marker"}</p>
+          <p className="text-xs text-foreground">
+            {reportingMode === "road-closed"
+              ? roadClosureDraftPoints.length === 0
+                ? "Tap to set road closure start"
+                : roadClosureDraftPoints.length === 1
+                  ? "Tap to set road closure end"
+                  : "Tap to adjust end point, then confirm"
+              : `Tap map to place your ${formData.label || "marker"}`}
+          </p>
         </div>
       )}
 
