@@ -141,18 +141,6 @@ export const mapMarkers: MapMarker[] = [
     details: "3,200 acres, 20% contained",
   },
   {
-    id: "2",
-    lat: 34.0622,
-    lng: -118.2837,
-    type: "danger",
-    label: "Fire Spread Zone",
-    status: "Warning",
-    dangerLevel: "incoming",
-    acres: 1500,
-    containmentPercent: 0,
-    details: "Expected to reach area by 6PM",
-  },
-  {
     id: "3",
     lat: 34.0422,
     lng: -118.2437,
@@ -200,6 +188,201 @@ export const mapMarkers: MapMarker[] = [
     status: "Active",
     volunteerNeeds: ["drivers", "translators", "meow"],
   },
+  // additional shelters
+  {
+    id: "s-1",
+    lat: 34.0900,
+    lng: -118.2700,
+    type: "shelter",
+    label: "Valley Community Center",
+    status: "Open",
+    currentCapacity: 150,
+    maxCapacity: 400,
+    foodCondition: "stable",
+    contactInfo: "555-0199",
+  },
+  {
+    id: "s-2",
+    lat: 34.0450,
+    lng: -118.3050,
+    type: "shelter",
+    label: "Westside Gymnasium",
+    status: "Open",
+    currentCapacity: 80,
+    maxCapacity: 300,
+    foodCondition: "shortage",
+    contactInfo: "555-0188",
+  },
+  {
+    id: "s-3",
+    lat: 34.0320,
+    lng: -118.2900,
+    type: "shelter",
+    label: "Downtown Church",
+    status: "Near Full",
+    currentCapacity: 290,
+    maxCapacity: 300,
+    foodCondition: "stable",
+    contactInfo: "555-0177",
+  },
+  {
+    id: "s-4",
+    lat: 34.1000,
+    lng: -118.2400,
+    type: "shelter",
+    label: "Harbor High School",
+    status: "Open",
+    currentCapacity: 120,
+    maxCapacity: 500,
+    foodCondition: "stable",
+    contactInfo: "555-0166",
+  },
+  {
+    id: "s-5",
+    lat: 34.1200,
+    lng: -118.2500,
+    type: "shelter",
+    label: "Pacific Arena",
+    status: "Open",
+    currentCapacity: 220,
+    maxCapacity: 600,
+    foodCondition: "stable",
+    contactInfo: "555-0155",
+  },
+  {
+    id: "s-6",
+    lat: 34.0700,
+    lng: -118.3200,
+    type: "shelter",
+    label: "Metro Convention Center",
+    status: "Open",
+    currentCapacity: 400,
+    maxCapacity: 1000,
+    foodCondition: "stable",
+    contactInfo: "555-0140",
+  },
+  // food banks
+  {
+    id: "f-1",
+    lat: 34.1100,
+    lng: -118.2800,
+    type: "food-bank",
+    label: "Northside Food Bank",
+    status: "Active",
+    currentCapacity: 200,
+    maxCapacity: 500,
+    foodCondition: "stable",
+    contactInfo: "555-0133",
+    safetyReports: [],
+  },
+  {
+    id: "f-2",
+    lat: 34.0400,
+    lng: -118.2600,
+    type: "food-bank",
+    label: "Eastside Pantry",
+    status: "Active",
+    currentCapacity: 150,
+    maxCapacity: 400,
+    foodCondition: "stable",
+    contactInfo: "555-0122",
+    safetyReports: [],
+  },
+  {
+    id: "f-3",
+    lat: 34.0800,
+    lng: -118.3000,
+    type: "food-bank",
+    label: "Central Food Hub",
+    status: "Active",
+    currentCapacity: 300,
+    maxCapacity: 600,
+    foodCondition: "stable",
+    contactInfo: "555-0111",
+    safetyReports: [],
+  },
+  {
+    id: "f-4",
+    lat: 34.0200,
+    lng: -118.2450,
+    type: "food-bank",
+    label: "Southside Distribution",
+    status: "Active",
+    currentCapacity: 180,
+    maxCapacity: 450,
+    foodCondition: "stable",
+    contactInfo: "555-0100",
+    safetyReports: [],
+  },
+  {
+    id: "f-5",
+    lat: 34.0500,
+    lng: -118.3200,
+    type: "food-bank",
+    label: "Valley Relief Center",
+    status: "Active",
+    currentCapacity: 220,
+    maxCapacity: 500,
+    foodCondition: "stable",
+    contactInfo: "555-0099",
+    safetyReports: [],
+  },
+  // volunteering spots
+  {
+    id: "v-1",
+    lat: 34.1150,
+    lng: -118.2650,
+    type: "volunteer",
+    label: "Beach Cleanup",
+    status: "Active",
+    volunteerNeeds: ["bags", "truck drivers"],
+  },
+  {
+    id: "v-2",
+    lat: 34.0300,
+    lng: -118.3100,
+    type: "volunteer",
+    label: "Food Distribution",
+    status: "Active",
+    volunteerNeeds: ["streamers", "sign holders"],
+  },
+  {
+    id: "v-3",
+    lat: 34.1000,
+    lng: -118.2950,
+    type: "volunteer",
+    label: "First Aid Tent",
+    status: "Active",
+    volunteerNeeds: ["nurses", "med students"],
+  },
+  {
+    id: "v-4",
+    lat: 34.0600,
+    lng: -118.2400,
+    type: "volunteer",
+    label: "Pet Shelter Support",
+    status: "Active",
+    volunteerNeeds: ["pet handlers"],
+  },
+  {
+    id: "v-5",
+    lat: 34.0450,
+    lng: -118.2700,
+    type: "volunteer",
+    label: "Toy Donation",
+    status: "Active",
+    volunteerNeeds: ["drivers"],
+  },
+  {
+    id: "v-6",
+    lat: 34.0750,
+    lng: -118.2500,
+    type: "volunteer",
+    label: "Water Drop-off",
+    status: "Active",
+    volunteerNeeds: ["coolers", "volunteers"],
+  },
+
   {
     id: "7",
     lat: 34.0478,
@@ -473,6 +656,52 @@ export interface DangerZone {
   containmentPercent: number
 }
 
+// Danger zone boundaries as GeoJSON polygons
+export interface DangerZone {
+  id: string
+  name: string
+  type: "fire" | "flood" | "storm"
+  color: string
+  polygon: [number, number][] // [lat, lng] pairs
+  dangerLevel: "active-threat" | "incoming" | "contained"
+  acres: number
+  containmentPercent: number
+}
+
+
+// helper to convert meters to degrees latitude/longitude at a given latitude
+function metersToDegLat(m: number) {
+  return m / 111320
+}
+function metersToDegLng(m: number, lat: number) {
+  return m / (111320 * Math.cos((lat * Math.PI) / 180))
+}
+
+// generate a roughly circular polygon with radial noise to simulate irregular wildfire perimeters
+function generateIrregularPolygon(
+  lat: number,
+  lng: number,
+  radiusMeters: number,
+  points = 48,
+  variance = 0.3
+): [number, number][] {
+  const coords: [number, number][] = []
+  for (let i = 0; i < points; i++) {
+    const theta = (i / points) * Math.PI * 2
+    const rand = 1 + (Math.random() * 2 - 1) * variance
+    const r = radiusMeters * rand
+    const dy = Math.sin(theta) * r
+    const dx = Math.cos(theta) * r
+    coords.push([
+      lat + metersToDegLat(dy),
+      lng + metersToDegLng(dx, lat),
+    ])
+  }
+  coords.push(coords[0]) // close ring
+  return coords
+}
+
+
 export const dangerZones: DangerZone[] = [
   {
     id: "dz-1",
@@ -482,29 +711,8 @@ export const dangerZones: DangerZone[] = [
     dangerLevel: "active-threat",
     acres: 3200,
     containmentPercent: 20,
-    polygon: [
-      [34.0522, -118.2637],
-      [34.0620, -118.2637],
-      [34.0620, -118.2540],
-      [34.0522, -118.2540],
-      [34.0522, -118.2637],
-    ],
-  },
-  {
-    id: "dz-2",
-    name: "Fire Spread Zone",
-    type: "fire",
-    color: "#f59e0b",
-    dangerLevel: "incoming",
-    acres: 1500,
-    containmentPercent: 0,
-    polygon: [
-      [34.0622, -118.2837],
-      [34.0750, -118.2837],
-      [34.0750, -118.2700],
-      [34.0622, -118.2700],
-      [34.0622, -118.2837],
-    ],
+    // make radius much larger and variance smaller relative to radius
+    polygon: generateIrregularPolygon(34.0522, -118.2637, 3000, 80, 0.1),
   },
 ]
 
