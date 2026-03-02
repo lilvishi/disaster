@@ -44,7 +44,9 @@
 
 ### Test the Notification
 1. Click "Test Push" button on Community Feed
-2. You should see a browser notification appear
+   - An alert will display the current notification permission state.
+   - If permission was not yet granted you'll be prompted to allow notifications.
+2. After allowing, you should see a browser notification appear
 3. In DevTools Console, you should see:
    - "Service Worker received message: {type: 'SHOW_NOTIFICATION', ...}"
    - "Showing notification: Fire near your area ..."

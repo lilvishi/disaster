@@ -100,6 +100,23 @@ function CommunityFeed() {
     }
   }
 
+  // handler for the "Test Push" button: show permission status, request if needed, then send notification
+  const handleTestPush = async () => {
+    if ('Notification' in window) {
+      if (Notification.permission !== 'granted') {
+        const perm = await Notification.requestPermission()
+        alert('Notification permission: ' + perm)
+      } else {
+        alert('Notification permission: ' + Notification.permission)
+      }
+    } else {
+      alert('Notifications are not supported in this browser.')
+    }
+
+    // trigger even if denied; triggerNotification will fallback or do nothing
+    triggerNotification('Fire near your area', 'An urgent update was posted to your community.')
+  }
+
   const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>, type: "photo" | "video") => {
     const file = e.target.files?.[0]
     if (file) {
@@ -410,7 +427,7 @@ function CommunityFeed() {
           Most Upvotes
         </button>
         <button
-          onClick={() => triggerNotification("Fire near your area", "An urgent update was posted to your community.")}
+          onClick={handleTestPush}
           className={cn(
             "rounded-lg px-3 py-1 text-xs",
             "bg-card text-foreground shadow-sm"
