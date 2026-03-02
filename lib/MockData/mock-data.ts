@@ -1,4 +1,5 @@
 import UCLAFire from "./ucla-fire.jpg"
+import VaishGeorgia from "./VaishGeorgia.jpeg"
 import { StaticImageData } from "next/image"
 export interface CrisisData {
   disasterType: string
@@ -530,11 +531,12 @@ export const weatherData: WeatherData = {
 export const communityPosts: CommunityPost[] = [
   {
     id: "1",
-    author: "Maria Santos",
-    avatar: "MS",
-    content: "Just evacuated from Zone 3. Roads are clear on Pacific Coast Highway heading south. Stay safe everyone.",
+    author: "Vaish&Georgia",
+    avatar: "VG",
+    content: "We lost our plushie while evacuating from the fires :( Please call us at 123-456-7890 if you find it! Please, it's our baby.",
     timestamp: "8 min ago",
-    type: "text",
+    type: "image",
+    media: VaishGeorgia,
     upvotes: 47,
     downvotes: 0,
     replies: 0,
@@ -545,9 +547,9 @@ export const communityPosts: CommunityPost[] = [
   },
   {
     id: "2",
-    author: "David Chen",
+    author: "Jennifer Bruin",
     avatar: "DC",
-    content: "Lincoln High shelter has water but running low on blankets. If anyone can bring extras, please do.",
+    content: "I'm an international student with nowhere to evacuate. Can I stay with someone nearby?",
     timestamp: "22 min ago",
     type: "help-needed",
     upvotes: 89,
@@ -560,7 +562,7 @@ export const communityPosts: CommunityPost[] = [
   },
   {
     id: "3",
-    author: "Sarah Johnson",
+    author: "Josie Bruin",
     avatar: "SJ",
     content: "You can see the fires from UCLA.",
     timestamp: "45 min ago",
@@ -649,7 +651,7 @@ export const safeModeData = {
   volunteerRegion: "Los Angeles",
   nearestDisaster: {
     type: "WILDFIRE",
-    areaName: "Griffith Park area",
+    areaName: "Downtown Los Angeles",
     riskLevel: "moderate" as const,
     distanceMiles: 6.8,
     lastUpdated: "12 min ago",
