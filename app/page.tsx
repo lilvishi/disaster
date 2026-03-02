@@ -77,7 +77,7 @@ export default function Home() {
   return (
     <div className="flex h-dvh flex-col bg-background">
       <AppHeader />
-      <main className="flex-1 min-h-0 overflow-hidden">
+      <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
         {activeTab === "crisis" && (
           <>
             {locationStatus === "loading" && (
