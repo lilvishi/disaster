@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { MessageCircle, ShieldCheck, HandHeart, Gift, HeartHandshake, MapPin, Users, ChevronRight, Send, AlertCircle, Trash, ArrowUp, ArrowDown, Flag, Image as ImageIcon, Video } from "lucide-react"
+import { MessageCircle, ShieldCheck, HandHeart, Gift, HeartHandshake, MapPin, Users, ChevronRight, Send, AlertCircle, ArrowUp, ArrowDown, Flag, Image as ImageIcon, Video, ExternalLink } from "lucide-react"
 import { communityPosts, volunteerLocations } from "@/lib/MockData/mock-data"
 import { cn } from "@/lib/utils"
 
@@ -13,6 +13,73 @@ const typeConfig = {
   donation: { icon: Gift, color: "text-accent", bg: "bg-accent/15", label: "Donate" },
   "send-love": { icon: HeartHandshake, color: "text-primary", bg: "bg-primary/15", label: "Send Love" },
 }
+
+const laResourceLinks = [
+  {
+    id: "food-bank",
+    name: "Los Angeles Regional Food Bank",
+    category: "Food Security",
+    summary: "Donate food or funds to support local food insecurity.",
+    href: "https://www.lafoodbank.org/",
+    type: "donation" as const,
+  },
+  {
+    id: "food-oasis",
+    name: "Food Oasis LA",
+    category: "Food Security",
+    summary: "Find trusted meal and pantry resources across LA.",
+    href: "https://foodoasis.la/",
+    type: "donation" as const,
+  },
+  {
+    id: "midnight-mission",
+    name: "The Midnight Mission",
+    category: "Homelessness & Housing",
+    summary: "Support Skid Row services with clothing, household items, and funds.",
+    href: "https://www.midnightmission.org/",
+    type: "donation" as const,
+  },
+  {
+    id: "dwc",
+    name: "Downtown Women's Center",
+    category: "Homelessness & Housing",
+    summary: "Donate essentials and support long-term housing services for women.",
+    href: "https://downtownwomenscenter.org/",
+    type: "donation" as const,
+  },
+  {
+    id: "direct-relief",
+    name: "Direct Relief",
+    category: "Disaster Relief",
+    summary: "Supports wildfire and emergency response with medical aid.",
+    href: "https://www.directrelief.org/",
+    type: "volunteer" as const,
+  },
+  {
+    id: "ccf",
+    name: "California Community Foundation",
+    category: "Disaster Relief",
+    summary: "Contribute to LA-area disaster recovery and community resilience funds.",
+    href: "https://www.calfund.org/",
+    type: "donation" as const,
+  },
+  {
+    id: "core",
+    name: "CORE",
+    category: "Disaster Relief",
+    summary: "Supports immediate wildfire response and recovery operations.",
+    href: "https://www.coreresponse.org/",
+    type: "volunteer" as const,
+  },
+  {
+    id: "mutual-aid",
+    name: "Mutual Aid LA Network",
+    category: "Community Aid",
+    summary: "Community-driven aid requests and volunteer coordination.",
+    href: "https://www.mutualaidla.org/",
+    type: "send-love" as const,
+  },
+]
 
 export function CommunityPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("feed")
@@ -475,6 +542,12 @@ function CommunityFeed() {
 }
 
 function VolunteerSection() {
+  const quickActionLinks = {
+    volunteer: "https://www.coreresponse.org/",
+    donation: "https://www.lafoodbank.org/",
+    "send-love": "https://www.mutualaidla.org/",
+  } as const
+
   return (
     <div className="flex flex-col gap-4">
       {/* Quick Actions */}
@@ -483,15 +556,18 @@ function VolunteerSection() {
           const config = typeConfig[type]
           const Icon = config.icon
           return (
-            <button
+            <a
               key={type}
+              href={quickActionLinks[type]}
+              target="_blank"
+              rel="noreferrer"
               className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-secondary/50"
             >
               <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl", config.bg)}>
                 <Icon className={cn("h-5 w-5", config.color)} />
               </div>
               <span className="text-xs font-medium text-foreground">{config.label}</span>
-            </button>
+            </a>
           )
         })}
       </div>
@@ -500,19 +576,26 @@ function VolunteerSection() {
       <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-start gap-3">
         <AlertCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
         <p className="text-xs text-muted-foreground leading-relaxed">
-          All listed organizations and donation sites have been verified. Report suspicious requests using the flag button.
+          All listed organizations and donation sites have been verified. Report suspicious requests to{" "}
+          <a href="https://reportfraud.ftc.gov/" target="_blank" rel="noreferrer">
+            https://reportfraud.ftc.gov/
+          </a>
+          .
         </p>
       </div>
 
-      {/* Locations */}
+      {/* Resource links */}
       <div className="flex flex-col gap-3">
-        <h3 className="text-sm font-bold text-foreground font-mono">Nearby Opportunities</h3>
-        {volunteerLocations.map((loc) => {
-          const config = typeConfig[loc.type]
+        <h3 className="text-sm font-bold text-foreground font-mono">Top LA Resource Links</h3>
+        {laResourceLinks.map((resource) => {
+          const config = typeConfig[resource.type]
           const Icon = config.icon
           return (
-            <button
-              key={loc.id}
+            <a
+              key={resource.id}
+              href={resource.href}
+              target="_blank"
+              rel="noreferrer"
               className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-card/80"
             >
               <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", config.bg)}>
@@ -520,27 +603,21 @@ function VolunteerSection() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-semibold text-foreground truncate">{loc.name}</h4>
-                  {loc.needsHelp && (
-                    <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
-                      Needs Help
-                    </span>
-                  )}
+                  <h4 className="text-sm font-semibold text-foreground truncate">{resource.name}</h4>
+                  <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+                    {resource.category}
+                  </span>
                 </div>
                 <div className="flex items-center gap-3 mt-1">
                   <div className="flex items-center gap-1 text-muted-foreground">
                     <MapPin className="h-3 w-3" />
-                    <span className="text-xs">{loc.distance}</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <Users className="h-3 w-3" />
-                    <span className="text-xs">{loc.volunteers} volunteers</span>
+                    <span className="text-xs">Los Angeles</span>
                   </div>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{loc.address}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{resource.summary}</p>
               </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-            </button>
+              <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+            </a>
           )
         })}
       </div>
