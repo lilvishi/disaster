@@ -154,14 +154,14 @@ function CommunityFeed() {
         type: 'SHOW_NOTIFICATION',
         title,
         body,
-        icon: '/icons/icon-192.jpg',
+        icon: '/icons/SafeSeek192.png',
       })
     } else {
       // Fallback: show notification directly if service worker not available
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification(title, {
           body,
-          icon: '/icons/icon-192.jpg',
+          icon: '/icons/SafeSeek192.png',
         })
       }
     }
@@ -247,7 +247,7 @@ function CommunityFeed() {
       if (Notification.permission === "granted") {
         new Notification("Fire near your area", {
           body: "An urgent update was posted to your community.",
-          icon: "/icons/icon-192.jpg",
+          icon: "/icons/SafeSeek192.png",
         })
         return
       }
@@ -256,7 +256,7 @@ function CommunityFeed() {
         if (perm === "granted") {
           new Notification("Fire near your area", {
             body: "An urgent update was posted to your community.",
-            icon: "/icons/icon-192.jpg",
+            icon: "/icons/SafeSeek192.png",
           })
         }
       }
