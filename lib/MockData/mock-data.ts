@@ -34,6 +34,8 @@ export interface MapMarker {
   isVerified?: boolean
   verificationCount?: number
   reportCount?: number
+  // optional image for report
+  imageUrl?: string | StaticImageData
   reportCategory?: "hazard" | "help" | "resource"
   // Volunteer fields
   volunteerNeeds?: string[]

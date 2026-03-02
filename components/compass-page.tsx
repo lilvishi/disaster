@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Flame, Home, HandHeart, UtensilsCrossed, AlertCircle, Ban, MapPin, Filter, Layers, X, Megaphone, Send } from "lucide-react"
+import { Flame, Home, HandHeart, UtensilsCrossed, AlertCircle, Ban, MapPin, Filter, Layers, X, Megaphone, Send, ChevronUp, ChevronDown } from "lucide-react"
 import { mapMarkers, type MapMarker, dangerZones } from "@/lib/MockData/mock-data"
 import { cn } from "@/lib/utils"
 import { createPortal } from "react-dom"
@@ -48,7 +48,8 @@ type ReportType = "danger" | "shelter" | "food-bank" | "report" | "volunteer" | 
 interface FormData {
   label: string
   details: string
-  [key: string]: string | number | string[]
+  imageUrl?: string
+  [key: string]: string | number | string[] | undefined
 }
 
 export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" | "shelter" }) {
@@ -60,6 +61,7 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
 
   const [allMarkers, setAllMarkers] = useState<MapMarker[]>(mapMarkers)
   const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null)
+  const [popupExpanded, setPopupExpanded] = useState(false)
   const [activeFilters, setActiveFilters] = useState<Set<MapMarker["type"]>>(
     new Set(["danger", "shelter", "volunteer", "food-bank", "report", "road-closed"])
   )
@@ -298,7 +300,7 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
   }, [])
 
   const handleMarkerPlacement = (lat: number, lng: number) => {
-    const newMarker: MapMarker = {
+    const newMarker: MapMarker & { imageUrl?: string } = {
       id: `user-${Date.now()}`,
       lat,
       lng,
@@ -306,6 +308,7 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
       type: reportingMode as MapMarker["type"],
       status: "Unverified",
       userReportId: true,
+      imageUrl: formData.imageUrl,
     }
 
     setAllMarkers((prev) => [...prev, newMarker])
@@ -354,6 +357,33 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
           onChange={(e) => setFormData((prev) => ({ ...prev, details: e.target.value }))}
           className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground mb-2 h-20 resize-none"
         />
+        <div className="flex flex-col gap-2">
+          <label className="text-xs text-muted-foreground">Attach a photo (optional)</label>
+          <div className="flex items-center gap-2">
+            <input
+              id="report-image-input"
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                const reader = new FileReader()
+                reader.onload = () => {
+                  setFormData((prev) => ({ ...prev, imageUrl: reader.result as string }))
+                }
+                reader.readAsDataURL(file)
+              }}
+              className="hidden"
+            />
+            <label htmlFor="report-image-input" className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-xs font-medium text-foreground cursor-pointer hover:bg-secondary/80 border border-border">
+              Choose photo
+            </label>
+            <span className="text-xs text-muted-foreground truncate max-w-xs">{formData.imageUrl ? 'Image selected' : 'No file chosen'}</span>
+          </div>
+          {formData.imageUrl && (
+            <img src={formData.imageUrl} alt="preview" className="mt-1 h-56 w-1/4 object-cover rounded-md border border-border" />
+          )}
+        </div>
       </>
     )
 
@@ -457,6 +487,11 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
     reportingModeRef.current = reportingMode
   }, [reportingMode])
 
+  // reset popup expansion when selected marker changes
+  useEffect(() => {
+    setPopupExpanded(false)
+  }, [selectedMarker?.id])
+
   useEffect(() => {
     const map = mapInstanceRef.current
     if (!map) return
@@ -507,7 +542,7 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
       <div
         ref={mapRef}
         style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, minHeight: "100%" }}
-        className="absolute inset-0 bg-secondary"
+        className="absolute inset-0 bg-secondary z-0"
         onTransitionEnd={() => mapInstanceRef.current?.invalidateSize()}
       />
 
@@ -675,7 +710,12 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
 
       {/* Selected Marker Detail */}
       {selectedMarker && (
-        <div className="absolute bottom-3 left-3 right-3 z-[1000] rounded-xl bg-card/95 backdrop-blur-md border border-border p-4 shadow-xl animate-in slide-in-from-bottom-4 duration-300 max-h-[40vh] overflow-y-auto">
+        <div
+          className={cn(
+            "absolute bottom-3 left-3 right-3 z-[1000] rounded-xl bg-card/95 backdrop-blur-md border border-border p-4 shadow-xl animate-in slide-in-from-bottom-4 duration-300 overflow-y-auto",
+            popupExpanded ? "max-h-[100vh]" : "max-h-[50vh]"
+          )}
+        >
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div
@@ -689,9 +729,18 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
                 <p className="text-xs text-muted-foreground mt-0.5">{markerConfig[selectedMarker.type].label}</p>
               </div>
             </div>
-            <button onClick={() => setSelectedMarker(null)} className="text-muted-foreground hover:text-foreground">
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPopupExpanded((s) => !s)}
+                aria-label={popupExpanded ? "Collapse details" : "Expand details"}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                {popupExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+              </button>
+              <button onClick={() => setSelectedMarker(null)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           {/* Marker type specific details */}
@@ -728,6 +777,11 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
             <>
               {selectedMarker.reportComment && <p className="text-xs text-muted-foreground mt-2 italic">💬 {selectedMarker.reportComment}</p>}
               {selectedMarker.reportCategory && <p className="text-xs text-muted-foreground">📂 {selectedMarker.reportCategory}</p>}
+                  {selectedMarker.imageUrl && (
+                    <div className="mt-3">
+                      <img src={selectedMarker.imageUrl as any} alt="report image" className="h-80 w-1/4 object-cover rounded-md border border-border" />
+                    </div>
+                  )}
               <div className="mt-3 flex gap-2">
                 <button
                   onClick={() => handleVerifyReport(selectedMarker.id)}
@@ -746,11 +800,11 @@ export function CompassPage({ preset = "all" }: { preset?: "all" | "volunteer" |
                 <button
                   onClick={() => handleReportAsInaccurate(selectedMarker.id)}
                   className={cn(
-                    "flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors border",
+                    "flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors border",
                     verificationState[selectedMarker.id]?.userReported
-                      ? "bg-red-600 text-white border-red-700 hover:bg-red-700"
+                      ? "bg-red-700 text-white border-red-800 hover:bg-red-800"
                       : verificationState[selectedMarker.id]?.userVerified
-                        ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20 opacity-50 cursor-not-allowed hover:bg-red-500/10"
+                        ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20 opacity-50 cursor-not-allowed"
                         : "bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30 hover:bg-red-500/30"
                   )}
                   disabled={verificationState[selectedMarker.id]?.userVerified}
